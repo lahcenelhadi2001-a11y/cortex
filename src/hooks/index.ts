@@ -336,3 +336,13 @@ export {
   useAccessibility,
   type UseAccessibilityReturn,
 } from "./useAccessibility";
+
+// ============================================================================
+// File System Hooks
+// ============================================================================
+
+export {
+  useFileSystem,
+  type FileSystemResult,
+  type UseFileSystemReturn,
+} from "./useFileSystem";
