@@ -151,7 +151,10 @@ impl ActivityState {
     }
 
     fn generate_id(&self) -> String {
-        let mut counter = self.task_counter.lock().unwrap_or_else(|e| e.into_inner());
+        let mut counter = self.task_counter.lock().unwrap_or_else(|e| {
+            tracing::warn!("Activity task_counter mutex was poisoned, recovering");
+            e.into_inner()
+        });
         *counter += 1;
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)

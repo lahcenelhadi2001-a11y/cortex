@@ -278,7 +278,10 @@ pub fn host_register_command(extension_id: &str, command_id: &str, title: &str) 
         title: title.to_string(),
     };
 
-    let mut registry = COMMAND_REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = COMMAND_REGISTRY.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] COMMAND_REGISTRY mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(command);
 
     info!(
@@ -311,7 +314,10 @@ pub fn host_execute_command(command_id: &str, args_json: &str) -> Result<String,
 }
 
 pub fn host_get_commands() -> String {
-    let registry = COMMAND_REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+    let registry = COMMAND_REGISTRY.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] COMMAND_REGISTRY mutex was poisoned, recovering");
+        e.into_inner()
+    });
 
     serde_json::to_string(&*registry).unwrap_or_else(|_| "[]".to_string())
 }
@@ -855,7 +861,10 @@ pub fn host_create_output_channel(name: &str) -> String {
         name: name.to_string(),
     };
 
-    let mut registry = OUTPUT_CHANNELS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = OUTPUT_CHANNELS.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] OUTPUT_CHANNELS mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(entry);
 
     info!(
@@ -880,7 +889,10 @@ pub fn host_create_tree_view(id: &str, title: &str) -> String {
         title: title.to_string(),
     };
 
-    let mut registry = TREE_VIEWS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = TREE_VIEWS.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] TREE_VIEWS mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(entry);
 
     info!(
@@ -898,7 +910,10 @@ pub fn host_create_webview_panel(view_type: &str, title: &str) -> String {
         title: title.to_string(),
     };
 
-    let mut registry = WEBVIEW_PANELS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = WEBVIEW_PANELS.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] WEBVIEW_PANELS mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(entry);
 
     info!(
@@ -983,7 +998,10 @@ fn register_language_provider(provider_type: &str, language_id: &str) -> String 
         language_id: language_id.to_string(),
     };
 
-    let mut registry = LANGUAGE_PROVIDERS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = LANGUAGE_PROVIDERS.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] LANGUAGE_PROVIDERS mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(entry);
 
     info!(
@@ -1062,7 +1080,10 @@ pub fn host_create_terminal(name: &str, cwd: &str) -> String {
         cwd: cwd.to_string(),
     };
 
-    let mut registry = TERMINALS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = TERMINALS.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] TERMINALS mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(entry);
 
     info!(
@@ -1107,7 +1128,10 @@ pub fn host_create_decoration_type(options_json: &str) -> String {
         options: options_json.to_string(),
     };
 
-    let mut registry = DECORATION_TYPES.lock().unwrap_or_else(|e| e.into_inner());
+    let mut registry = DECORATION_TYPES.lock().unwrap_or_else(|e| {
+        warn!("[WasmExt] DECORATION_TYPES mutex was poisoned, recovering");
+        e.into_inner()
+    });
     registry.push(entry);
 
     info!(

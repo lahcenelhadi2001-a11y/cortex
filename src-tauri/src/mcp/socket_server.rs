@@ -213,7 +213,10 @@ impl<R: Runtime> SocketServer<R> {
             UnifiedListener::Ipc(ipc_listener) => {
                 info!("[MCP] IPC listener thread started");
                 for conn in ipc_listener.incoming() {
-                    if !*running.lock().unwrap_or_else(|e| e.into_inner()) {
+                    if !*running.lock().unwrap_or_else(|e| {
+                        error!("[MCP] Running mutex was poisoned, stopping server");
+                        e.into_inner()
+                    }) {
                         break;
                     }
 
@@ -243,7 +246,10 @@ impl<R: Runtime> SocketServer<R> {
                 tcp_listener.set_nonblocking(true).ok();
 
                 loop {
-                    if !*running.lock().unwrap_or_else(|e| e.into_inner()) {
+                    if !*running.lock().unwrap_or_else(|e| {
+                        error!("[MCP] Running mutex was poisoned, stopping server");
+                        e.into_inner()
+                    }) {
                         break;
                     }
 
