@@ -37,6 +37,7 @@ import { useLayout } from "@/context/LayoutContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { useOutput } from "@/context/OutputContext";
 import { useWindowEvents } from "@/hooks/useWindowEvents";
+import { useAutoSave } from "@/hooks/useAutoSave";
 import { initGlobalErrorHandler } from "@/lib/error-handler";
 
 if (import.meta.env.DEV) console.log(`[STARTUP] AppCore imports done @ ${performance.now().toFixed(1)}ms`);
@@ -273,8 +274,12 @@ function AppContent(props: ParentProps) {
   const notifications = useNotifications();
   const output = useOutput();
 
-  // Window lifecycle events (close-requested with dirty file prompt, focus/blur)
+  // Window lifecycle events (close-requested with dirty file prompt, focus/blur,
+  // beforeunload, visibilitychange, force-close cleanup)
   useWindowEvents();
+
+  // Auto-save dirty files based on user settings (afterDelay, onFocusChange, onWindowChange)
+  useAutoSave();
 
   // Global error handler (unhandled rejections, uncaught errors)
   let cleanupErrorHandler: (() => void) | undefined;

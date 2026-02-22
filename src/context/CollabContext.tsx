@@ -1241,8 +1241,15 @@ export function CollabProvider(props: ParentProps) {
     listen<{ id: string; name: string; hostId: string; createdAt: number; participants: unknown[]; documentIds: string[]; serverPort: number }>("collab:session-created", (event) => {
       collabLogger.debug("Session created via backend event:", event.payload);
     }).then(u => { unlistenSessionCreated = u; });
+
+    const handleWindowClosing = () => {
+      disconnect();
+    };
+    window.addEventListener("window:closing", handleWindowClosing);
+
     onCleanup(() => {
       disconnect();
+      window.removeEventListener("window:closing", handleWindowClosing);
       unlistenJoined?.();
       unlistenLeft?.();
       unlistenSessionCreated?.();

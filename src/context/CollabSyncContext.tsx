@@ -401,9 +401,15 @@ export function CollabSyncProvider(props: ParentProps) {
       }
     });
 
+    const handleWindowClosing = () => {
+      disconnectWebSocket();
+    };
+    window.addEventListener("window:closing", handleWindowClosing);
+
     onCleanup(() => {
       unlisten.then((fn) => fn());
       disconnectWebSocket();
+      window.removeEventListener("window:closing", handleWindowClosing);
     });
   });
 

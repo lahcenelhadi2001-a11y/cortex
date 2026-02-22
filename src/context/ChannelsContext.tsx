@@ -1380,10 +1380,16 @@ export function ChannelsProvider(props: ParentProps) {
     );
   };
 
-  // Cleanup on unmount - wrap in onMount for proper reactive context
+  // Cleanup on unmount and on window close
   onMount(() => {
+    const handleWindowClosing = () => {
+      disconnectFromChannels();
+    };
+    window.addEventListener("window:closing", handleWindowClosing);
+
     onCleanup(() => {
       disconnectFromChannels();
+      window.removeEventListener("window:closing", handleWindowClosing);
     });
   });
 
