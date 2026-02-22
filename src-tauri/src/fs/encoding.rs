@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tracing::{info, warn};
 
-use crate::fs::types::DirectoryCache;
+use crate::fs::types::{DirectoryCache, ENCODING_SAMPLE_SIZE, MAX_TEXT_FILE_SIZE};
 
 // ============================================================================
 // Line Ending Detection and Conversion
@@ -17,6 +17,15 @@ use crate::fs::types::DirectoryCache;
 /// Detect the line ending style of a file
 #[tauri::command]
 pub fn fs_detect_eol(path: String) -> Result<String, String> {
+    let metadata =
+        std::fs::metadata(&path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    if metadata.len() > MAX_TEXT_FILE_SIZE {
+        return Err(format!(
+            "File is too large for EOL detection ({:.1} MB, limit {:.0} MB)",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_TEXT_FILE_SIZE as f64 / (1024.0 * 1024.0),
+        ));
+    }
     let content = std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read file '{path}' for EOL detection: {e}"))?;
 
@@ -54,6 +63,15 @@ pub fn fs_detect_eol(path: String) -> Result<String, String> {
 /// Convert line endings of a file to the specified style
 #[tauri::command]
 pub fn fs_convert_eol(path: String, target_eol: String) -> Result<(), String> {
+    let metadata =
+        std::fs::metadata(&path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    if metadata.len() > MAX_TEXT_FILE_SIZE {
+        return Err(format!(
+            "File is too large for EOL conversion ({:.1} MB, limit {:.0} MB)",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_TEXT_FILE_SIZE as f64 / (1024.0 * 1024.0),
+        ));
+    }
     let content = std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read file '{path}' for EOL conversion: {e}"))?;
 
@@ -80,10 +98,30 @@ pub fn fs_convert_eol(path: String, target_eol: String) -> Result<(), String> {
 // File Encoding Detection and Conversion
 // ============================================================================
 
-/// Detect the encoding of a file
+/// Detect the encoding of a file.
+///
+/// For large files, only reads a sample (first 64 KB) to avoid loading
+/// multi-GB files into memory.
 #[tauri::command]
 pub fn fs_detect_encoding(path: String) -> Result<String, String> {
-    let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    use std::io::Read;
+
+    let metadata =
+        std::fs::metadata(&path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    let file_size = metadata.len() as usize;
+
+    let bytes = if file_size > ENCODING_SAMPLE_SIZE {
+        let mut file =
+            std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
+        let mut buf = vec![0u8; ENCODING_SAMPLE_SIZE];
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+        buf.truncate(n);
+        buf
+    } else {
+        std::fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?
+    };
 
     // Check for BOM first
     if let Some((encoding, _)) = encoding_rs::Encoding::for_bom(&bytes) {
@@ -101,6 +139,18 @@ pub fn fs_detect_encoding(path: String) -> Result<String, String> {
 /// Read a file with a specific encoding
 #[tauri::command]
 pub async fn fs_read_file_with_encoding(path: String, encoding: String) -> Result<String, String> {
+    let metadata = tokio::fs::metadata(&path)
+        .await
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    if metadata.len() > MAX_TEXT_FILE_SIZE {
+        return Err(format!(
+            "File is too large to read ({:.1} MB, limit {:.0} MB): {}",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_TEXT_FILE_SIZE as f64 / (1024.0 * 1024.0),
+            path
+        ));
+    }
+
     let bytes = tokio::fs::read(&path)
         .await
         .map_err(|e| format!("Failed to read file: {}", e))?;

@@ -12,8 +12,19 @@ use crate::fs::types::TextEdit;
 /// order (bottom to top) to maintain correct positions.
 #[tauri::command]
 pub async fn apply_workspace_edit(uri: String, edits: Vec<TextEdit>) -> Result<(), String> {
-    // Convert file:// URI to path
-    let file_path = uri.strip_prefix("file://").unwrap_or(&uri);
+    // Convert file:// URI to path, handling both Unix and Windows formats
+    // Windows URIs look like file:///C:/path, Unix like file:///path
+    let file_path = if let Some(stripped) = uri.strip_prefix("file:///") {
+        // On Windows, file:///C:/path -> C:/path; on Unix, file:///path -> /path
+        if cfg!(windows) && stripped.len() >= 2 && stripped.as_bytes()[1] == b':' {
+            stripped
+        } else {
+            // Unix: restore the leading slash
+            uri.strip_prefix("file://").unwrap_or(&uri)
+        }
+    } else {
+        uri.strip_prefix("file://").unwrap_or(&uri)
+    };
 
     tracing::debug!("Applying {} workspace edits to {}", edits.len(), file_path);
 

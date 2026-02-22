@@ -816,6 +816,12 @@ pub fn handle_run_event(app: &AppHandle, event: RunEvent) {
             }
 
             {
+                let dir_cache = app.state::<Arc<crate::fs::DirectoryCache>>();
+                dir_cache.clear();
+                info!("Directory cache cleared on app exit");
+            }
+
+            {
                 let settings_state = app.state::<crate::settings::storage::SettingsState>();
                 settings_state.flush();
                 info!("Settings flushed on app exit");

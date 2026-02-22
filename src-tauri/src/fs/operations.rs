@@ -12,7 +12,7 @@ use tracing::info;
 use crate::fs::security::{
     validate_path_for_delete, validate_path_for_read, validate_path_for_write,
 };
-use crate::fs::types::DirectoryCache;
+use crate::fs::types::{DirectoryCache, MAX_BINARY_FILE_SIZE, MAX_TEXT_FILE_SIZE};
 
 // ============================================================================
 // File Read Operations
@@ -31,6 +31,18 @@ pub async fn fs_read_file(path: String) -> Result<String, String> {
 
     if !validated_path.is_file() {
         return Err(format!("Path is not a file: {}", path));
+    }
+
+    let metadata = fs::metadata(&validated_path)
+        .await
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    if metadata.len() > MAX_TEXT_FILE_SIZE {
+        return Err(format!(
+            "File is too large to open as text ({:.1} MB, limit {:.0} MB): {}",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_TEXT_FILE_SIZE as f64 / (1024.0 * 1024.0),
+            path
+        ));
     }
 
     // Try reading as UTF-8 first, fall back to lossy conversion for non-UTF-8 files
@@ -56,6 +68,18 @@ pub async fn fs_read_file_binary(path: String) -> Result<String, String> {
 
     if !validated_path.exists() {
         return Err(format!("File does not exist: {}", path));
+    }
+
+    let metadata = fs::metadata(&validated_path)
+        .await
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    if metadata.len() > MAX_BINARY_FILE_SIZE {
+        return Err(format!(
+            "File is too large to read ({:.1} MB, limit {:.0} MB): {}",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_BINARY_FILE_SIZE as f64 / (1024.0 * 1024.0),
+            path
+        ));
     }
 
     let bytes = fs::read(&validated_path)
@@ -337,7 +361,7 @@ pub async fn fs_move(app: AppHandle, source: String, destination: String) -> Res
     Ok(())
 }
 
-/// Recursively copy a directory
+/// Recursively copy a directory, skipping symlinks to prevent infinite loops
 pub async fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
     fs::create_dir_all(dst)
         .await
@@ -355,13 +379,24 @@ pub async fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
         let entry_path = entry.path();
         let dest_path = dst.join(entry.file_name());
 
-        if entry_path.is_dir() {
+        let file_type = entry
+            .file_type()
+            .await
+            .map_err(|e| format!("Failed to get file type: {}", e))?;
+
+        if file_type.is_symlink() {
+            tracing::warn!("Skipping symlink during copy: {}", entry_path.display());
+            continue;
+        }
+
+        if file_type.is_dir() {
             Box::pin(copy_dir_recursive(&entry_path, &dest_path)).await?;
-        } else {
+        } else if file_type.is_file() {
             fs::copy(&entry_path, &dest_path)
                 .await
                 .map_err(|e| format!("Failed to copy file: {}", e))?;
         }
+        // Skip special files (sockets, pipes, device files)
     }
 
     Ok(())
@@ -429,7 +464,7 @@ pub async fn fs_reveal_in_explorer(path: String) -> Result<(), String> {
         let parent = file_path
             .parent()
             .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or(path.clone());
+            .unwrap_or_else(|| path.clone());
 
         crate::process_utils::command("xdg-open")
             .arg(&parent)

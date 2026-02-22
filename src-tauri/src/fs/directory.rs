@@ -233,7 +233,8 @@ pub fn build_file_tree_parallel(
             children: None,
         };
 
-        if is_dir && depth > 0 {
+        // Skip recursive traversal into symlinked directories to prevent infinite loops
+        if is_dir && depth > 0 && !is_symlink {
             let cache_key = path.to_string_lossy().to_string();
 
             let immediate_children = if let Some(cached) = cache.get(&cache_key) {
@@ -256,7 +257,8 @@ pub fn build_file_tree_parallel(
                 let mut join_set: JoinSet<Result<FileEntry, String>> = JoinSet::new();
 
                 for child in immediate_children {
-                    if child.is_dir {
+                    // Only recurse into non-symlink directories
+                    if child.is_dir && !child.is_symlink {
                         let child_path = PathBuf::from(&child.path);
                         let sem = Arc::clone(&semaphore);
                         let cache_clone = Arc::clone(&cache);

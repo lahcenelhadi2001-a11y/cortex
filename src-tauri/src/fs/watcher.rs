@@ -31,11 +31,16 @@ pub async fn fs_watch_directory(
         return Err(format!("Directory does not exist: {}", path));
     }
 
-    let normalized_path = dir_path
-        .canonicalize()
-        .unwrap_or(dir_path.clone())
-        .to_string_lossy()
-        .to_string();
+    let normalized_path = match dir_path.canonicalize() {
+        Ok(p) => p.to_string_lossy().to_string(),
+        Err(e) => {
+            warn!(
+                "Failed to canonicalize watch path '{}', using as-is: {}",
+                path, e
+            );
+            dir_path.to_string_lossy().to_string()
+        }
+    };
 
     {
         let watchers = watcher_state.watchers.lock();
@@ -165,11 +170,16 @@ pub async fn fs_unwatch_directory(
     let watcher_state = app.state::<Arc<FileWatcherState>>();
 
     if let Some(p) = &path {
-        let normalized = PathBuf::from(p)
-            .canonicalize()
-            .unwrap_or(PathBuf::from(p))
-            .to_string_lossy()
-            .to_string();
+        let normalized = match PathBuf::from(p).canonicalize() {
+            Ok(canon) => canon.to_string_lossy().to_string(),
+            Err(e) => {
+                warn!(
+                    "Failed to canonicalize unwatch path '{}', using as-is: {}",
+                    p, e
+                );
+                p.clone()
+            }
+        };
         watcher_state.unregister_watch(&normalized, &watch_id);
     }
 

@@ -29,6 +29,15 @@ pub const CACHE_TTL_SECS: u64 = 30;
 /// Maximum cache entries
 pub const MAX_CACHE_ENTRIES: usize = 500;
 
+/// Maximum text file size to load into memory (50 MB)
+pub const MAX_TEXT_FILE_SIZE: u64 = 50 * 1024 * 1024;
+
+/// Maximum binary file size to load into memory (512 MB)
+pub const MAX_BINARY_FILE_SIZE: u64 = 512 * 1024 * 1024;
+
+/// Sample size for encoding detection on large files (64 KB)
+pub const ENCODING_SAMPLE_SIZE: usize = 64 * 1024;
+
 // ============================================================================
 // Core Types
 // ============================================================================
@@ -112,10 +121,14 @@ pub struct DirectoryCache {
 
 impl DirectoryCache {
     pub fn new() -> Self {
+        // SAFETY: MAX_CACHE_ENTRIES is a compile-time constant > 0
+        const CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(MAX_CACHE_ENTRIES) {
+            Some(v) => v,
+            None => unreachable!(),
+        };
         Self {
             cache: DashMap::new(),
-            #[allow(clippy::unwrap_used)]
-            lru_order: Mutex::new(LruCache::new(NonZeroUsize::new(MAX_CACHE_ENTRIES).unwrap())),
+            lru_order: Mutex::new(LruCache::new(CACHE_SIZE)),
             ttl: Duration::from_secs(CACHE_TTL_SECS),
         }
     }
@@ -260,10 +273,8 @@ impl FileWatcherState {
         let mut watchers = self.watchers.lock();
         let count = watchers.len();
         watchers.clear();
-        let mut watched = self.watched_paths.lock();
-        watched.clear();
-        let mut events = self.last_events.lock();
-        events.clear();
+        self.watched_paths.lock().clear();
+        self.last_events.lock().clear();
         if count > 0 {
             tracing::info!("Stopped {} file watchers", count);
         }

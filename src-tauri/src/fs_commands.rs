@@ -17,7 +17,7 @@ use tauri::{AppHandle, Manager};
 use tracing::info;
 
 use crate::fs::security::{validate_path_for_delete, validate_path_for_read};
-use crate::fs::types::DirectoryCache;
+use crate::fs::types::{DirectoryCache, ENCODING_SAMPLE_SIZE, MAX_TEXT_FILE_SIZE};
 use crate::models::FileContent;
 
 /// Read a file and return its content with encoding metadata.
@@ -38,20 +38,33 @@ pub async fn read_file(path: String) -> Result<FileContent, String> {
         return Err(format!("Path is not a file: {}", path));
     }
 
+    let metadata = tokio::fs::metadata(&validated_path)
+        .await
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    let size = metadata.len();
+
+    if size > MAX_TEXT_FILE_SIZE {
+        return Err(format!(
+            "File is too large to open ({:.1} MB, limit {:.0} MB): {}",
+            size as f64 / (1024.0 * 1024.0),
+            MAX_TEXT_FILE_SIZE as f64 / (1024.0 * 1024.0),
+            path
+        ));
+    }
+
     let bytes = tokio::fs::read(&validated_path)
         .await
         .map_err(|e| format!("Failed to read file: {}", e))?;
 
-    let size = bytes.len() as u64;
-
-    // Detect encoding via BOM first, then chardetng
+    // Detect encoding via BOM first, then chardetng (using sample for detection)
     let (encoding, content) = if let Some((enc, _bom_len)) = encoding_rs::Encoding::for_bom(&bytes)
     {
         let (decoded, _, _) = enc.decode(&bytes);
         (enc.name().to_string(), decoded.into_owned())
     } else {
+        let sample_len = bytes.len().min(ENCODING_SAMPLE_SIZE);
         let mut detector = chardetng::EncodingDetector::new();
-        detector.feed(&bytes, true);
+        detector.feed(&bytes[..sample_len], bytes.len() <= ENCODING_SAMPLE_SIZE);
         let enc = detector.guess(None, true);
         let (decoded, _, _) = enc.decode(&bytes);
         (enc.name().to_string(), decoded.into_owned())

@@ -46,11 +46,12 @@ impl Default for ProjectState {
 }
 
 fn recent_projects_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app.path().app_data_dir().unwrap_or_else(|_| {
-        dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("Cortex-desktop")
-    });
+    let app_data_dir = match app.path().app_data_dir() {
+        Ok(dir) => dir,
+        Err(_) => dirs::config_dir()
+            .ok_or_else(|| "Could not determine config directory".to_string())?
+            .join("Cortex-desktop"),
+    };
     Ok(app_data_dir.join(RECENT_PROJECTS_FILE))
 }
 
