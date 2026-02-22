@@ -124,6 +124,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_Storage_FileSystem",
     "Win32_NetworkManagement_NetManagement",
     "Win32_System_Memory",
+    "Win32_Globalization",
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

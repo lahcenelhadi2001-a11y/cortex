@@ -31,19 +31,51 @@ pub struct I18nConfig {
 // Helpers
 // ============================================================================
 
-/// Detect the system locale from environment variables.
+/// Detect the system locale.
 ///
-/// Checks `LANG` first, then `LC_ALL`. The raw value is normalised by
-/// stripping any encoding suffix (e.g. `.UTF-8`) and region qualifier
-/// (e.g. `_US`), yielding a bare language code such as `"en"` or `"fr"`.
-/// Returns `"en"` when no environment variable is set or the value is
-/// empty / `"C"` / `"POSIX"`.
+/// On Unix, checks `LANG` first, then `LC_ALL`. On Windows, tries `LANG`/`LC_ALL`
+/// env vars first, then falls back to the Win32 `GetUserDefaultLocaleName` API.
+/// The raw value is normalised by stripping any encoding suffix (e.g. `.UTF-8`)
+/// and region qualifier (e.g. `_US`), yielding a bare language code such as
+/// `"en"` or `"fr"`. Returns `"en"` when no locale can be determined.
 pub fn detect_system_locale() -> String {
+    // Try environment variables first (works on all platforms)
     let raw = std::env::var("LANG")
         .or_else(|_| std::env::var("LC_ALL"))
         .unwrap_or_default();
 
-    parse_locale_code(&raw)
+    let from_env = parse_locale_code(&raw);
+    if from_env != "en" || !raw.is_empty() {
+        return from_env;
+    }
+
+    // On Windows, fall back to the Win32 API when env vars are not set
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(locale) = detect_windows_locale() {
+            return locale;
+        }
+    }
+
+    "en".to_string()
+}
+
+/// Detect locale on Windows using the Win32 GetUserDefaultLocaleName API.
+#[cfg(target_os = "windows")]
+fn detect_windows_locale() -> Option<String> {
+    use windows_sys::Win32::Globalization::GetUserDefaultLocaleName;
+
+    let mut buf = [0u16; 85]; // LOCALE_NAME_MAX_LENGTH is 85
+    let len = unsafe { GetUserDefaultLocaleName(buf.as_mut_ptr(), buf.len() as i32) };
+    if len > 0 {
+        let locale_str = String::from_utf16_lossy(&buf[..(len as usize).saturating_sub(1)]);
+        // Windows returns BCP 47 tags like "en-US", extract the language part
+        let language = locale_str.split('-').next().unwrap_or(&locale_str);
+        if !language.is_empty() {
+            return Some(language.to_lowercase());
+        }
+    }
+    None
 }
 
 fn parse_locale_code(raw: &str) -> String {

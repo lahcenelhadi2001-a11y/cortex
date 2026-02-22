@@ -429,6 +429,12 @@ pub async fn notebook_detect_kernels(app: AppHandle) -> Result<Vec<NotebookKerne
         }
 
         let cmd_str = cmd.to_string();
+        #[cfg(target_os = "windows")]
+        let probe_result = tokio::process::Command::new("where")
+            .arg(&cmd_str)
+            .output()
+            .await;
+        #[cfg(not(target_os = "windows"))]
         let probe_result = tokio::process::Command::new("which")
             .arg(&cmd_str)
             .output()
@@ -471,17 +477,43 @@ async fn discover_jupyter_kernels() -> Result<Vec<NotebookKernelEntry>, String> 
         }
     }
 
-    // 2. Standard locations
-    if let Some(home) = dirs::home_dir() {
-        // Linux: ~/.local/share/jupyter/kernels/
-        kernel_dirs.push(home.join(".local/share/jupyter/kernels"));
-        // macOS: ~/Library/Jupyter/kernels/
-        kernel_dirs.push(home.join("Library/Jupyter/kernels"));
+    // 2. Standard locations (platform-specific)
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            kernel_dirs.push(
+                std::path::PathBuf::from(&appdata)
+                    .join("jupyter")
+                    .join("kernels"),
+            );
+        }
+        if let Ok(programdata) = std::env::var("PROGRAMDATA") {
+            kernel_dirs.push(
+                std::path::PathBuf::from(&programdata)
+                    .join("jupyter")
+                    .join("kernels"),
+            );
+        }
     }
 
-    // 3. System-wide locations
-    kernel_dirs.push(std::path::PathBuf::from("/usr/share/jupyter/kernels"));
-    kernel_dirs.push(std::path::PathBuf::from("/usr/local/share/jupyter/kernels"));
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Some(home) = dirs::home_dir() {
+            // Linux: ~/.local/share/jupyter/kernels/
+            kernel_dirs.push(
+                home.join(".local")
+                    .join("share")
+                    .join("jupyter")
+                    .join("kernels"),
+            );
+            // macOS: ~/Library/Jupyter/kernels/
+            kernel_dirs.push(home.join("Library").join("Jupyter").join("kernels"));
+        }
+
+        // 3. System-wide locations (Unix only)
+        kernel_dirs.push(std::path::PathBuf::from("/usr/share/jupyter/kernels"));
+        kernel_dirs.push(std::path::PathBuf::from("/usr/local/share/jupyter/kernels"));
+    }
 
     // 4. Conda environments
     if let Ok(output) = tokio::process::Command::new("conda")
@@ -497,7 +529,9 @@ async fn discover_jupyter_kernels() -> Result<Vec<NotebookKernelEntry>, String> 
                             if let Some(env_path) = env.as_str() {
                                 kernel_dirs.push(
                                     std::path::PathBuf::from(env_path)
-                                        .join("share/jupyter/kernels"),
+                                        .join("share")
+                                        .join("jupyter")
+                                        .join("kernels"),
                                 );
                             }
                         }
