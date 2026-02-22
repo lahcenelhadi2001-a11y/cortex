@@ -34,6 +34,10 @@ import { useEditor } from "@/context/EditorContext";
 import { useExtensions } from "@/context/ExtensionsContext";
 import { useCommands } from "@/context/CommandContext";
 import { useLayout } from "@/context/LayoutContext";
+import { useNotifications } from "@/context/NotificationsContext";
+import { useOutput } from "@/context/OutputContext";
+import { useWindowEvents } from "@/hooks/useWindowEvents";
+import { initGlobalErrorHandler } from "@/lib/error-handler";
 
 if (import.meta.env.DEV) console.log(`[STARTUP] AppCore imports done @ ${performance.now().toFixed(1)}ms`);
 
@@ -266,6 +270,14 @@ function DeepLinkHandler(): null {
 function AppContent(props: ParentProps) {
   const windowInfo = useAuxiliaryWindowInfo();
   const layout = useLayout();
+  const notifications = useNotifications();
+  const output = useOutput();
+
+  // Window lifecycle events (close-requested with dirty file prompt, focus/blur)
+  useWindowEvents();
+
+  // Global error handler (unhandled rejections, uncaught errors)
+  let cleanupErrorHandler: (() => void) | undefined;
   
   // Dialog states
   const [showFeedback, setShowFeedback] = createSignal(false);
@@ -337,6 +349,12 @@ function AppContent(props: ParentProps) {
 
   onMount(() => {
     if (import.meta.env.DEV) console.log(`[STARTUP] AppContent mounted @ ${performance.now().toFixed(1)}ms`);
+
+    // Global error handler for unhandled errors/rejections
+    cleanupErrorHandler = initGlobalErrorHandler({
+      notify: (opts) => notifications.notify(opts),
+      appendLine: (channel, text, opts) => output.appendLine(channel, text, opts),
+    });
     
     // Event listeners for core functionality
     window.addEventListener("feedback:open", handleFeedbackOpen as EventListener);
@@ -400,6 +418,7 @@ function AppContent(props: ParentProps) {
     window.removeEventListener("settings:open", handleSettingsOpen);
     window.removeEventListener("keydown", handleKeyDown);
     if (mcpCleanup) mcpCleanup();
+    if (cleanupErrorHandler) cleanupErrorHandler();
     invoke("unregister_window", { label: getWindowLabel() }).catch(() => {});
   });
 
