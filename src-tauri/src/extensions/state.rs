@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{info, warn};
 
-use super::types::{Extension, ExtensionManifest, ExtensionSource};
+use super::types::{validate_manifest, Extension, ExtensionManifest, ExtensionSource};
 use super::utils::{copy_dir_recursive, extensions_directory_path};
 #[cfg(feature = "wasm-extensions")]
 use super::wasm::WasmRuntime;
@@ -101,6 +101,15 @@ impl ExtensionsManager {
 
         let manifest: ExtensionManifest = serde_json::from_str(&manifest_content)
             .map_err(|e| format!("Failed to parse extension.json: {}", e))?;
+
+        if let Err(errors) = validate_manifest(&manifest) {
+            let messages: Vec<String> = errors.iter().map(|e| e.message.clone()).collect();
+            warn!(
+                "Manifest validation warnings for '{}': {}",
+                manifest.name,
+                messages.join("; ")
+            );
+        }
 
         let enabled = self
             .enabled_extensions

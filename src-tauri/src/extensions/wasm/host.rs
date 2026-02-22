@@ -330,6 +330,9 @@ fn validate_workspace_path(
     workspace_root: &str,
     relative_path: &str,
 ) -> Result<std::path::PathBuf, String> {
+    if relative_path.contains("..") {
+        return Err("Path must not contain '..' components".to_string());
+    }
     let root = Path::new(workspace_root)
         .canonicalize()
         .map_err(|e| format!("Invalid workspace root: {}", e))?;
@@ -597,7 +600,14 @@ pub fn host_save_document(uri: &str) -> Result<(), String> {
 
 pub fn host_get_document_text_by_uri(uri: &str) -> Result<String, String> {
     debug!("[WasmExt] Get document text: uri='{}'", uri);
-    fs::read_to_string(uri).map_err(|e| format!("Failed to read document '{}': {}", uri, e))
+    if uri.is_empty() {
+        return Err("Document URI must not be empty".to_string());
+    }
+    let path = Path::new(uri);
+    if !path.is_absolute() {
+        return Err(format!("Document URI must be an absolute path: '{}'", uri));
+    }
+    fs::read_to_string(path).map_err(|e| format!("Failed to read document '{}': {}", uri, e))
 }
 
 pub fn host_document_line_at(uri: &str, line: u32) -> Result<String, String> {
@@ -1177,7 +1187,6 @@ static DIAGNOSTICS: Lazy<Mutex<Vec<DiagnosticEntry>>> = Lazy::new(|| Mutex::new(
 static STATUS_BAR_MESSAGES: Lazy<Mutex<Vec<StatusBarEntry>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static CODE_ACTION_PROVIDERS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
-#[allow(clippy::expect_used)]
 pub fn host_register_language(language_id: &str, extensions_json: &str) {
     let extensions: Vec<String> = serde_json::from_str(extensions_json).unwrap_or_default();
     let entry = RegisteredLanguage {
@@ -1187,7 +1196,7 @@ pub fn host_register_language(language_id: &str, extensions_json: &str) {
 
     let mut registry = REGISTERED_LANGUAGES
         .lock()
-        .expect("Registered languages lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     registry.push(entry);
 
     info!(
@@ -1196,7 +1205,6 @@ pub fn host_register_language(language_id: &str, extensions_json: &str) {
     );
 }
 
-#[allow(clippy::expect_used)]
 pub fn host_register_diagnostic(uri: &str, diagnostics: &str) {
     let entry = DiagnosticEntry {
         uri: uri.to_string(),
@@ -1205,18 +1213,17 @@ pub fn host_register_diagnostic(uri: &str, diagnostics: &str) {
 
     let mut registry = DIAGNOSTICS
         .lock()
-        .expect("Diagnostics registry lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     registry.retain(|d| d.uri != uri);
     registry.push(entry);
 
     info!("[WasmExt] Registered diagnostics for uri='{}'", uri);
 }
 
-#[allow(clippy::expect_used)]
 pub fn host_register_code_action_provider(language_id: &str) {
     let mut registry = CODE_ACTION_PROVIDERS
         .lock()
-        .expect("Code action providers lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     if !registry.contains(&language_id.to_string()) {
         registry.push(language_id.to_string());
     }
@@ -1231,7 +1238,6 @@ pub fn host_get_workspace_path() -> Option<String> {
     None
 }
 
-#[allow(clippy::expect_used)]
 pub fn host_set_status_bar_message(text: &str, timeout_ms: Option<u32>) {
     let created_at = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -1245,7 +1251,7 @@ pub fn host_set_status_bar_message(text: &str, timeout_ms: Option<u32>) {
 
     let mut registry = STATUS_BAR_MESSAGES
         .lock()
-        .expect("Status bar messages lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     registry.push(entry);
 
     info!(

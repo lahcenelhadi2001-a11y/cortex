@@ -3,10 +3,21 @@
 //! This module contains all the data structures used to represent extensions,
 //! their manifests, and their contributions.
 
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+static NAME_RE: Lazy<Regex> = Lazy::new(|| {
+    #[allow(clippy::unwrap_used)]
+    Regex::new(r"^[a-zA-Z0-9._-]+$").unwrap()
+});
+
+static VERSION_RE: Lazy<Regex> = Lazy::new(|| {
+    #[allow(clippy::unwrap_used)]
+    Regex::new(r"^\d+\.\d+\.\d+$").unwrap()
+});
 
 /// Extension manifest schema - defines the structure of extension.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -511,14 +522,12 @@ pub struct ManifestValidationError {
 pub fn validate_manifest(manifest: &ExtensionManifest) -> Result<(), Vec<ManifestValidationError>> {
     let mut errors: Vec<ManifestValidationError> = Vec::new();
 
-    #[allow(clippy::unwrap_used)]
-    let name_re = Regex::new(r"^[a-zA-Z0-9._-]+$").unwrap();
     if manifest.name.is_empty() {
         errors.push(ManifestValidationError {
             field: "name".to_string(),
             message: "name must not be empty".to_string(),
         });
-    } else if !name_re.is_match(&manifest.name) {
+    } else if !NAME_RE.is_match(&manifest.name) {
         errors.push(ManifestValidationError {
             field: "name".to_string(),
             message: "name must contain only alphanumeric characters, dashes, underscores, or dots"
@@ -526,9 +535,7 @@ pub fn validate_manifest(manifest: &ExtensionManifest) -> Result<(), Vec<Manifes
         });
     }
 
-    #[allow(clippy::unwrap_used)]
-    let version_re = Regex::new(r"^\d+\.\d+\.\d+$").unwrap();
-    if !version_re.is_match(&manifest.version) {
+    if !VERSION_RE.is_match(&manifest.version) {
         errors.push(ManifestValidationError {
             field: "version".to_string(),
             message: "version must match semver format X.Y.Z".to_string(),

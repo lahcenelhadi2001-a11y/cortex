@@ -13,7 +13,7 @@ pub fn extensions_directory_path() -> PathBuf {
         .join("extensions")
 }
 
-/// Recursively copy a directory
+/// Recursively copy a directory, skipping symlinks to prevent symlink attacks.
 pub fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     if !dst.exists() {
         fs::create_dir_all(dst)?;
@@ -25,6 +25,10 @@ pub fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
 
+        if file_type.is_symlink() {
+            continue;
+        }
+
         if file_type.is_dir() {
             copy_dir_recursive(&src_path, &dst_path)?;
         } else {
@@ -35,6 +39,9 @@ pub fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     Ok(())
 }
 
+const MAX_ZIP_ENTRIES: usize = 10_000;
+const MAX_ZIP_TOTAL_SIZE: u64 = 512 * 1024 * 1024; // 512 MB
+
 /// Extract a zip package to a directory
 pub fn extract_zip_package(
     zip_path: &std::path::Path,
@@ -44,6 +51,25 @@ pub fn extract_zip_package(
 
     let mut archive =
         zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+
+    if archive.len() > MAX_ZIP_ENTRIES {
+        return Err(format!(
+            "Zip archive contains too many entries ({}, max {})",
+            archive.len(),
+            MAX_ZIP_ENTRIES
+        ));
+    }
+
+    let total_size: u64 = (0..archive.len())
+        .filter_map(|i| archive.by_index(i).ok())
+        .map(|f| f.size())
+        .sum();
+    if total_size > MAX_ZIP_TOTAL_SIZE {
+        return Err(format!(
+            "Zip archive uncompressed size too large ({} bytes, max {} bytes)",
+            total_size, MAX_ZIP_TOTAL_SIZE
+        ));
+    }
 
     fs::create_dir_all(target_dir)
         .map_err(|e| format!("Failed to create extraction directory: {}", e))?;
