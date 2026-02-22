@@ -51,7 +51,7 @@ pub async fn lsp_document_highlights(
     client
         .document_highlights(&uri, position)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get document highlights from {server_id}: {e}"))
 }
 
 /// Request document highlights from all providers for a language
@@ -127,7 +127,10 @@ pub async fn lsp_document_links(
 
     let client = client.ok_or_else(|| format!("Server not found: {}", server_id))?;
 
-    client.document_links(&uri).await.map_err(|e| e.to_string())
+    client
+        .document_links(&uri)
+        .await
+        .map_err(|e| format!("Failed to get document links from {server_id}: {e}"))
 }
 
 /// Request document links from all providers for a language
@@ -176,7 +179,7 @@ pub async fn lsp_document_link_resolve(
     client
         .document_link_resolve(link)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to resolve document link from {server_id}: {e}"))
 }
 
 // ============================================================================
@@ -208,7 +211,7 @@ pub async fn lsp_evaluatable_expression(
     client
         .evaluatable_expression(&uri, params.position)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get evaluatable expression from {server_id}: {e}"))
 }
 
 // ============================================================================
@@ -240,7 +243,7 @@ pub async fn lsp_selection_ranges(
     client
         .selection_ranges(&uri, positions)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get selection ranges from {server_id}: {e}"))
 }
 
 // ============================================================================
@@ -288,7 +291,7 @@ pub async fn lsp_document_colors(
     client
         .document_colors(&uri)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get document colors from {server_id}: {e}"))
 }
 
 /// Request color presentations (how to format a color)
@@ -310,7 +313,7 @@ pub async fn lsp_color_presentations(
     client
         .color_presentations(&uri, color, range)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get color presentations from {server_id}: {e}"))
 }
 
 // ============================================================================
@@ -351,7 +354,10 @@ pub async fn lsp_folding_ranges(
 
     let client = client.ok_or_else(|| format!("Server not found: {}", server_id))?;
 
-    client.folding_ranges(&uri).await.map_err(|e| e.to_string())
+    client
+        .folding_ranges(&uri)
+        .await
+        .map_err(|e| format!("Failed to get folding ranges from {server_id}: {e}"))
 }
 
 /// Request folding ranges from all providers
@@ -419,7 +425,7 @@ pub async fn lsp_linked_editing_ranges(
     client
         .linked_editing_ranges(&uri, position)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get linked editing ranges from {server_id}: {e}"))
 }
 
 // ============================================================================
@@ -473,7 +479,7 @@ pub async fn lsp_inlay_hints(
     client
         .inlay_hints(&uri, range)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get inlay hints from {server_id}: {e}"))
 }
 
 /// Request inlay hints from all providers

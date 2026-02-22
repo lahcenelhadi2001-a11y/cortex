@@ -232,7 +232,10 @@ pub async fn prompt_store_load(
 ) -> Result<PromptStoreData, String> {
     // Check if already loaded in memory (fast path for new windows)
     {
-        let state_data = state.data.lock().map_err(|e| e.to_string())?;
+        let state_data = state
+            .data
+            .lock()
+            .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
         if !state_data.prompts.is_empty() {
             // Already loaded, return cached data
             return Ok(state_data.clone());
@@ -244,7 +247,10 @@ pub async fn prompt_store_load(
     let data = state.load_from_file(&path)?;
 
     // Update in-memory state
-    let mut state_data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut state_data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
     *state_data = data.clone();
 
     info!("Loaded {} prompts from {:?}", data.prompts.len(), path);
@@ -271,7 +277,10 @@ pub async fn prompt_store_save(
     state.save_to_file(&path, &data)?;
 
     // Update in-memory state
-    let mut state_data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut state_data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
     *state_data = data;
 
     info!("Saved prompts to {:?}", path);
@@ -285,7 +294,10 @@ pub async fn prompt_store_get(
     state: tauri::State<'_, PromptStoreState>,
     id: String,
 ) -> Result<Option<SavedPrompt>, String> {
-    let data = state.data.lock().map_err(|e| e.to_string())?;
+    let data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
     Ok(data.prompts.iter().find(|p| p.id == id).cloned())
 }
 
@@ -298,7 +310,10 @@ pub async fn prompt_store_create(
 ) -> Result<SavedPrompt, String> {
     let path = state.get_storage_path(&app)?;
 
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
 
     // Check for duplicate ID
     if data.prompts.iter().any(|p| p.id == prompt.id) {
@@ -309,7 +324,10 @@ pub async fn prompt_store_create(
 
     // Save to file
     drop(data);
-    let data = state.data.lock().map_err(|e| e.to_string())?;
+    let data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
     state.save_to_file(&path, &data)?;
 
     info!("Created prompt: {}", prompt.title);
@@ -327,7 +345,10 @@ pub async fn prompt_store_update(
 ) -> Result<SavedPrompt, String> {
     let path = state.get_storage_path(&app)?;
 
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
 
     let prompt = data
         .prompts
@@ -356,7 +377,10 @@ pub async fn prompt_store_delete(
 ) -> Result<(), String> {
     let path = state.get_storage_path(&app)?;
 
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
 
     let len_before = data.prompts.len();
     data.prompts.retain(|p| p.id != id);
@@ -381,7 +405,10 @@ pub async fn prompt_store_export(
     state: tauri::State<'_, PromptStoreState>,
     prompt_ids: Option<Vec<String>>,
 ) -> Result<String, String> {
-    let data = state.data.lock().map_err(|e| e.to_string())?;
+    let data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
 
     let prompts_to_export: Vec<SavedPrompt> = if let Some(ids) = prompt_ids {
         data.prompts
@@ -416,7 +443,10 @@ pub async fn prompt_store_import(
     let import_data: PromptStoreData = serde_json::from_str(&json_data)
         .map_err(|e| format!("Failed to parse import data: {}", e))?;
 
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire prompt store lock: {e}"))?;
 
     let mut imported_count = 0u32;
 

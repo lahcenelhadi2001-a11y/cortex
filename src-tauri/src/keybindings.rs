@@ -96,7 +96,7 @@ pub async fn load_keybindings_file_inner() -> Result<Vec<KeybindingEntry>, Strin
         Ok(file.bindings)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to load keybindings: {e}"))?
 }
 
 /// Load keybindings from the app data directory.
@@ -137,7 +137,7 @@ pub async fn save_keybindings_file(
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to save keybindings: {e}"))?
 }
 
 /// Return default keybindings (empty — defaults are managed on the frontend).
@@ -160,7 +160,7 @@ pub async fn import_keybindings(path: String) -> Result<Vec<KeybindingEntry>, St
         Ok(file.bindings)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to import keybindings from {path}: {e}"))?
 }
 
 /// Export keybindings to a user-specified file path.
@@ -192,7 +192,7 @@ pub async fn export_keybindings(
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to export keybindings to {path}: {e}"))?
 }
 
 /// Detect conflicting keybindings where the same key is mapped to multiple commands.

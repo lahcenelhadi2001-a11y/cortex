@@ -138,5 +138,5 @@ pub async fn debug_terminate_threads(
     session
         .terminate_threads(thread_ids)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to terminate threads in session {session_id}: {e}"))
 }

@@ -245,7 +245,7 @@ pub async fn workspace_cross_folder_copy(
 
         if src.is_dir() {
             copy_dir_recursive(src, dst)?;
-            info!("[Workspace] Copied directory {} -> {}", source, destination);
+            info!(target: "workspace", "Copied directory {} -> {}", source, destination);
         } else {
             if let Some(parent) = dst.parent() {
                 fs::create_dir_all(parent)
@@ -253,13 +253,13 @@ pub async fn workspace_cross_folder_copy(
             }
             fs::copy(src, dst)
                 .map_err(|e| format!("Failed to copy {} to {}: {}", source, destination, e))?;
-            info!("[Workspace] Copied file {} -> {}", source, destination);
+            info!(target: "workspace", "Copied file {} -> {}", source, destination);
         }
 
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn cross-folder copy task: {e}"))?
 }
 
 #[command]
@@ -291,12 +291,12 @@ pub async fn workspace_cross_folder_move(
 
         match fs::rename(src, dst) {
             Ok(()) => {
-                info!("[Workspace] Moved {} -> {}", source, destination);
+                info!(target: "workspace", "Moved {} -> {}", source, destination);
                 Ok(())
             }
             Err(rename_err) => {
                 warn!(
-                    "[Workspace] Rename failed ({}), falling back to copy+delete",
+                    target: "workspace", "Rename failed ({}), falling back to copy+delete",
                     rename_err
                 );
                 if src.is_dir() {
@@ -310,7 +310,7 @@ pub async fn workspace_cross_folder_move(
                         .map_err(|e| format!("Failed to remove source file {}: {}", source, e))?;
                 }
                 info!(
-                    "[Workspace] Moved (via copy+delete) {} -> {}",
+                    target: "workspace", "Moved (via copy+delete) {} -> {}",
                     source, destination
                 );
                 Ok(())
@@ -318,7 +318,7 @@ pub async fn workspace_cross_folder_move(
         }
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn cross-folder move task: {e}"))?
 }
 
 #[command]
@@ -348,13 +348,13 @@ pub async fn workspace_trust_set(
     if trusted {
         if !data.paths.contains(&workspace_path) {
             data.paths.push(workspace_path.clone());
-            info!("[Workspace] Trusted workspace: {}", workspace_path);
+            info!(target: "workspace", "Trusted workspace: {}", workspace_path);
         }
     } else {
         let before = data.paths.len();
         data.paths.retain(|p| p != &workspace_path);
         if data.paths.len() < before {
-            info!("[Workspace] Untrusted workspace: {}", workspace_path);
+            info!(target: "workspace", "Untrusted workspace: {}", workspace_path);
         }
     }
 
@@ -424,13 +424,13 @@ pub async fn workspace_trust_set_decision(
                 description,
                 trust_parent: trust_parent.unwrap_or(false),
             });
-            info!("[Workspace] Trust decision: trusted {}", path_to_trust);
+            info!(target: "workspace", "Trust decision: trusted {}", path_to_trust);
         }
     } else if trust_level == "restricted" {
         let before = data.folders.len();
         data.folders.retain(|f| f.path != workspace_path);
         if data.folders.len() < before {
-            info!("[Workspace] Trust decision: restricted {}", workspace_path);
+            info!(target: "workspace", "Trust decision: restricted {}", workspace_path);
         }
     }
 
@@ -454,7 +454,7 @@ pub async fn workspace_trust_add_folder(
             description,
             trust_parent: trust_parent.unwrap_or(false),
         });
-        info!("[Workspace] Added trusted folder: {}", path);
+        info!(target: "workspace", "Added trusted folder: {}", path);
     }
 
     write_trust_data(&data_path, &data).await
@@ -468,7 +468,7 @@ pub async fn workspace_trust_remove_folder(path: String, app: AppHandle) -> Resu
     let before = data.folders.len();
     data.folders.retain(|f| f.path != path);
     if data.folders.len() < before {
-        info!("[Workspace] Removed trusted folder: {}", path);
+        info!(target: "workspace", "Removed trusted folder: {}", path);
     }
 
     write_trust_data(&data_path, &data).await
@@ -486,7 +486,7 @@ pub async fn workspace_trust_clear_all(app: AppHandle) -> Result<(), String> {
     let data_path = trust_data_file_path(&app)?;
     let mut data = read_trust_data(&data_path).await;
     data.folders.clear();
-    info!("[Workspace] Cleared all trust decisions");
+    info!(target: "workspace", "Cleared all trust decisions");
     write_trust_data(&data_path, &data).await
 }
 
@@ -521,7 +521,7 @@ pub async fn workspace_trust_update_settings(
     if let Some(v) = settings.prompt_for_parent_folder_trust {
         data.settings.prompt_for_parent_folder_trust = v;
     }
-    info!("[Workspace] Updated trust settings");
+    info!(target: "workspace", "Updated trust settings");
     write_trust_data(&data_path, &data).await
 }
 
@@ -583,7 +583,7 @@ pub async fn workspace_aggregate_git_status(
                     });
                 }
                 Err(e) => {
-                    error!("[Workspace] Failed to get git status for {}: {}", root, e);
+                    error!(target: "workspace", "Failed to get git status for {}: {}", root, e);
                 }
             }
         }
@@ -591,7 +591,7 @@ pub async fn workspace_aggregate_git_status(
         Ok(results)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn workspace_find_files task: {e}"))?
 }
 
 // ============================================================================
@@ -846,7 +846,7 @@ pub async fn save_workspace_file(file_path: String, data: WorkspaceFileData) -> 
         .await
         .map_err(|e| format!("Failed to rename temporary file: {}", e))?;
 
-    info!("[Workspace] Saved workspace file: {}", file_path);
+    info!(target: "workspace", "Saved workspace file: {}", file_path);
     Ok(())
 }
 
@@ -866,7 +866,7 @@ pub async fn workspace_save_file(file_path: String, data: WorkspaceFileData) -> 
     tokio::fs::write(&path, content)
         .await
         .map_err(|e| format!("Failed to write workspace file '{}': {}", file_path, e))?;
-    info!("[Workspace] Saved workspace file: {}", file_path);
+    info!(target: "workspace", "Saved workspace file: {}", file_path);
     Ok(())
 }
 
@@ -879,7 +879,7 @@ pub async fn load_workspace_file(file_path: String) -> Result<WorkspaceFileData,
     let data: WorkspaceFileData = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse workspace file '{}': {}", file_path, e))?;
 
-    info!("[Workspace] Loaded workspace file: {}", file_path);
+    info!(target: "workspace", "Loaded workspace file: {}", file_path);
     Ok(data)
 }
 
@@ -891,7 +891,7 @@ pub async fn workspace_load_file(file_path: String) -> Result<WorkspaceFileData,
     let data: WorkspaceFileData = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse workspace file '{}': {}", file_path, e))?;
     info!(
-        "[Workspace] Loaded workspace file: {} ({} folders)",
+        target: "workspace", "Loaded workspace file: {} ({} folders)",
         file_path,
         data.folders.len()
     );
@@ -940,7 +940,7 @@ pub async fn import_code_workspace(file_path: String) -> Result<WorkspaceFileDat
             .unwrap_or(serde_json::Value::Object(Default::default())),
     };
 
-    info!("[Workspace] Imported .code-workspace file: {}", file_path);
+    info!(target: "workspace", "Imported .code-workspace file: {}", file_path);
     Ok(data)
 }
 
@@ -963,7 +963,7 @@ pub async fn save_workspace_state(
         .await
         .map_err(|e| format!("Failed to write workspace state: {}", e))?;
 
-    info!("[Workspace] Saved workspace state: {}", workspace_id);
+    info!(target: "workspace", "Saved workspace state: {}", workspace_id);
     Ok(())
 }
 
@@ -983,11 +983,11 @@ pub async fn restore_workspace_state(
                     workspace_id, e
                 )
             })?;
-            info!("[Workspace] Restored workspace state: {}", workspace_id);
+            info!(target: "workspace", "Restored workspace state: {}", workspace_id);
             Ok(Some(state))
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            warn!("[Workspace] No saved state found for: {}", workspace_id);
+            warn!(target: "workspace", "No saved state found for: {}", workspace_id);
             Ok(None)
         }
         Err(e) => Err(format!(
@@ -1054,7 +1054,7 @@ pub async fn workspace_reorder_folders(
         .await
         .map_err(|e| format!("Failed to write workspace file '{}': {}", file_path, e))?;
 
-    info!("[Workspace] Reordered folders in: {}", file_path);
+    info!(target: "workspace", "Reordered folders in: {}", file_path);
     Ok(data)
 }
 
@@ -1108,7 +1108,7 @@ pub async fn workspace_import_code_workspace(
     let tasks = parsed.get("tasks").cloned().unwrap_or_default();
 
     info!(
-        "[Workspace] Imported code-workspace file: {} ({} folders)",
+        target: "workspace", "Imported code-workspace file: {} ({} folders)",
         file_path,
         folders.len()
     );
@@ -1132,7 +1132,7 @@ pub async fn workspace_get_recent(app: AppHandle) -> Result<Vec<RecentWorkspaceE
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
         Err(e) => {
-            warn!("[Workspace] Failed to read recent workspaces: {}", e);
+            warn!(target: "workspace", "Failed to read recent workspaces: {}", e);
             Ok(Vec::new())
         }
     }
@@ -1171,7 +1171,7 @@ pub async fn add_recent_workspace(
         .map_err(|e| format!("Failed to write recent workspaces: {}", e))?;
 
     info!(
-        "[Workspace] Added recent workspace: {}",
+        target: "workspace", "Added recent workspace: {}",
         data.entries[0].path
     );
     Ok(())
@@ -1201,7 +1201,7 @@ pub async fn workspace_save_recent(
         .map_err(|e| format!("Failed to write recent workspaces: {}", e))?;
 
     info!(
-        "[Workspace] Saved {} recent workspace entries",
+        target: "workspace", "Saved {} recent workspace entries",
         list.entries.len()
     );
     Ok(())
@@ -1227,7 +1227,7 @@ pub async fn remove_recent_workspace(app: AppHandle, path: String) -> Result<(),
         tokio::fs::write(&file_path, content)
             .await
             .map_err(|e| format!("Failed to write recent workspaces: {}", e))?;
-        info!("[Workspace] Removed recent workspace: {}", path);
+        info!(target: "workspace", "Removed recent workspace: {}", path);
     }
 
     Ok(())
@@ -1259,11 +1259,11 @@ pub async fn restore_workspace_session(
                     project_path, e
                 )
             })?;
-            info!("[Workspace] Restored session for: {}", project_path);
+            info!(target: "workspace", "Restored session for: {}", project_path);
             Ok(Some(state))
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            warn!("[Workspace] No saved session for: {}", project_path);
+            warn!(target: "workspace", "No saved session for: {}", project_path);
             Ok(None)
         }
         Err(e) => Err(format!(

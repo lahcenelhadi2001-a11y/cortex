@@ -24,7 +24,7 @@ pub async fn debug_restart_frame(
     session
         .restart_frame(frame_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to restart frame in session {session_id}: {e}"))
 }
 
 /// Get possible goto targets for a source location
@@ -44,7 +44,7 @@ pub async fn debug_goto_targets(
     session
         .goto_targets(&source_path, line, column)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get goto targets in session {session_id}: {e}"))
 }
 
 /// Jump to a specific goto target
@@ -63,7 +63,7 @@ pub async fn debug_goto(
     session
         .goto(thread_id, target_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to goto target in session {session_id}: {e}"))
 }
 
 /// Get possible step-in targets for the current position
@@ -81,7 +81,7 @@ pub async fn debug_step_in_targets(
     session
         .step_in_targets(frame_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get step-in targets in session {session_id}: {e}"))
 }
 
 /// Step into a specific target (when multiple step-in targets exist)
@@ -100,7 +100,7 @@ pub async fn debug_step_in_target(
     session
         .step_in_target(thread_id, target_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to step into target in session {session_id}: {e}"))
 }
 
 /// Step into a specific target (for multi-target step into)

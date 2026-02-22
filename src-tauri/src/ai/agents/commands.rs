@@ -45,7 +45,7 @@ pub async fn agent_spawn(
             parent_id.as_deref(),
         )
     }
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| format!("Failed to spawn agent '{name}': {e}"))?;
     let a = o.get_agent(&id).cloned().ok_or("Not found")?;
     let _ = app.emit("agent:spawned", serde_json::json!({ "agent": a }));
     Ok(a)
@@ -100,7 +100,8 @@ pub async fn agent_cancel_task(
     task_id: String,
 ) -> Result<(), String> {
     let mut o = state.0.lock().await;
-    o.cancel_task(&task_id).map_err(|e| e.to_string())?;
+    o.cancel_task(&task_id)
+        .map_err(|e| format!("Failed to cancel task {task_id}: {e}"))?;
     let _ = app.emit(
         "agent:task-cancelled",
         serde_json::json!({ "taskId": task_id }),
@@ -187,7 +188,8 @@ pub async fn agent_remove(
     agent_id: String,
 ) -> Result<(), String> {
     let mut o = state.0.lock().await;
-    o.remove_agent(&agent_id).map_err(|e| e.to_string())?;
+    o.remove_agent(&agent_id)
+        .map_err(|e| format!("Failed to remove agent {agent_id}: {e}"))?;
     let _ = app.emit("agent:removed", serde_json::json!({ "agentId": agent_id }));
     Ok(())
 }

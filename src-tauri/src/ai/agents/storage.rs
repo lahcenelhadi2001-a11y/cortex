@@ -149,8 +149,13 @@ impl AgentStoreState {
 
         let mut agents = Vec::new();
 
-        for entry in std::fs::read_dir(&agents_dir).map_err(|e| e.to_string())? {
-            let entry = entry.map_err(|e| e.to_string())?;
+        for entry in std::fs::read_dir(&agents_dir).map_err(|e| {
+            format!(
+                "Failed to read agents directory {}: {e}",
+                agents_dir.display()
+            )
+        })? {
+            let entry = entry.map_err(|e| format!("Failed to read agent directory entry: {e}"))?;
             let path = entry.path();
 
             if path.is_dir() {
@@ -297,7 +302,10 @@ pub async fn agent_store_load(
     };
 
     // Update in-memory state
-    let mut state_data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut state_data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire agent store lock: {e}"))?;
     *state_data = data.clone();
 
     tracing::info!(
@@ -357,7 +365,10 @@ pub async fn agent_store_save(
         agents,
         history,
     };
-    let mut state_data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut state_data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire agent store lock: {e}"))?;
     *state_data = data;
 
     tracing::info!(agents_dir = ?get_os_agents_dir(), "Saved agents to OS directory");
@@ -375,7 +386,10 @@ pub async fn agent_store_update_stats(
     cost_usd: f64,
     task_completed: bool,
 ) -> Result<(), String> {
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire agent store lock: {e}"))?;
 
     if let Some(agent) = data.agents.iter_mut().find(|a| a.id == agent_id) {
         agent.tokens_used += tokens_used;
@@ -404,7 +418,10 @@ pub async fn agent_store_add_history(
     state: State<'_, AgentStoreState>,
     entry: AgentHistoryEntry,
 ) -> Result<(), String> {
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state
+        .data
+        .lock()
+        .map_err(|e| format!("Failed to acquire agent store lock: {e}"))?;
 
     data.history.push(entry);
 

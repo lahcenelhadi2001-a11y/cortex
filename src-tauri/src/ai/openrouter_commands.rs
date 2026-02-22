@@ -91,7 +91,7 @@ pub async fn openrouter_chat(
     manager
         .complete(messages, &model, AIProvider::OpenRouter)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("OpenRouter chat completion failed for model {model}: {e}"))
 }
 
 /// Streaming chat completion via OpenRouter.
@@ -142,7 +142,7 @@ pub async fn openrouter_stream_chat(
     manager
         .stream(messages, &model, AIProvider::OpenRouter, tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("OpenRouter streaming failed for model {model}: {e}"))?;
 
     Ok(())
 }

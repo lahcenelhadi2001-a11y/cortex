@@ -792,9 +792,12 @@ pub mod commands {
         );
 
         let result = ToolchainDetectionResult {
-            node_toolchains: node_result.map_err(|e| e.to_string())?,
-            python_toolchains: python_result.map_err(|e| e.to_string())?,
-            rust_toolchains: rust_result.map_err(|e| e.to_string())?,
+            node_toolchains: node_result
+                .map_err(|e| format!("Failed to detect Node toolchains: {e}"))?,
+            python_toolchains: python_result
+                .map_err(|e| format!("Failed to detect Python toolchains: {e}"))?,
+            rust_toolchains: rust_result
+                .map_err(|e| format!("Failed to detect Rust toolchains: {e}"))?,
         };
 
         // Cache the result
@@ -810,7 +813,7 @@ pub mod commands {
     pub async fn toolchain_detect_node() -> Result<Vec<ToolchainInfo>, String> {
         let result = tokio::task::spawn_blocking(detect_node_toolchains)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to detect Node toolchains: {e}"))?;
         Ok(result)
     }
 
@@ -818,7 +821,7 @@ pub mod commands {
     pub async fn toolchain_detect_python() -> Result<Vec<ToolchainInfo>, String> {
         let result = tokio::task::spawn_blocking(detect_python_toolchains)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to detect Python toolchains: {e}"))?;
         Ok(result)
     }
 
@@ -826,7 +829,7 @@ pub mod commands {
     pub async fn toolchain_detect_rust() -> Result<Vec<ToolchainInfo>, String> {
         let result = tokio::task::spawn_blocking(detect_rust_toolchains)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to detect Rust toolchains: {e}"))?;
         Ok(result)
     }
 
@@ -875,7 +878,7 @@ pub mod commands {
             toolchains
         })
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to detect project toolchains: {e}"))?;
 
         Ok(project_toolchains)
     }

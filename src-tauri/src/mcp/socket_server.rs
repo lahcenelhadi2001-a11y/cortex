@@ -135,7 +135,7 @@ impl<R: Runtime> SocketServer<R> {
     }
 
     pub fn start(&mut self) -> Result<(), String> {
-        info!("[MCP] Starting socket server...");
+        info!(target: "mcp", "Starting socket server...");
 
         let listener = match &self.config.socket_type {
             SocketType::Ipc { path } => {
@@ -149,7 +149,7 @@ impl<R: Runtime> SocketServer<R> {
                     }
                 }
 
-                info!("[MCP] Creating IPC socket at: {}", socket_path.display());
+                info!(target: "mcp", "Creating IPC socket at: {}", socket_path.display());
 
                 #[cfg(not(target_os = "windows"))]
                 let name = socket_path
@@ -177,7 +177,7 @@ impl<R: Runtime> SocketServer<R> {
             }
             SocketType::Tcp { host, port } => {
                 let addr = format!("{}:{}", host, port);
-                info!("[MCP] Creating TCP socket at: {}", addr);
+                info!(target: "mcp", "Creating TCP socket at: {}", addr);
 
                 let tcp_listener = TcpListener::bind(&addr)
                     .map_err(|e| format!("Failed to bind TCP socket: {}", e))?;
@@ -203,7 +203,7 @@ impl<R: Runtime> SocketServer<R> {
             }
         });
 
-        info!("[MCP] Socket server started successfully");
+        info!(target: "mcp", "Socket server started successfully");
         Ok(())
     }
 
@@ -215,7 +215,7 @@ impl<R: Runtime> SocketServer<R> {
     ) {
         match listener {
             UnifiedListener::Ipc(ipc_listener) => {
-                info!("[MCP] IPC listener thread started");
+                info!(target: "mcp", "IPC listener thread started");
                 for conn in ipc_listener.incoming() {
                     if !*running.lock().unwrap_or_else(|e| {
                         error!("[MCP] Running mutex was poisoned, stopping server");
@@ -226,7 +226,7 @@ impl<R: Runtime> SocketServer<R> {
 
                     match conn {
                         Ok(stream) => {
-                            info!("[MCP] Accepted new IPC connection");
+                            info!(target: "mcp", "Accepted new IPC connection");
                             let app_clone = app.clone();
                             let stream = UnifiedStream::Ipc(stream);
 
@@ -234,23 +234,23 @@ impl<R: Runtime> SocketServer<R> {
                                 if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                     if let Err(e) = Self::handle_client(stream, app_clone) {
                                         if !e.contains("pipe") && !e.contains("broken") {
-                                            error!("[MCP] Client error: {}", e);
+                                            error!(target: "mcp", "Client error: {}", e);
                                         }
                                     }
                                 })) {
-                                    error!("[MCP] IPC client handler panicked: {:?}", e);
+                                    error!(target: "mcp", "IPC client handler panicked: {:?}", e);
                                 }
                             });
                         }
                         Err(e) => {
-                            error!("[MCP] IPC accept error: {}", e);
+                            error!(target: "mcp", "IPC accept error: {}", e);
                             thread::sleep(Duration::from_millis(100));
                         }
                     }
                 }
             }
             UnifiedListener::Tcp(tcp_listener) => {
-                info!("[MCP] TCP listener thread started");
+                info!(target: "mcp", "TCP listener thread started");
                 tcp_listener.set_nonblocking(true).ok();
 
                 loop {
@@ -263,7 +263,7 @@ impl<R: Runtime> SocketServer<R> {
 
                     match tcp_listener.accept() {
                         Ok((stream, addr)) => {
-                            info!("[MCP] Accepted TCP connection from: {}", addr);
+                            info!(target: "mcp", "Accepted TCP connection from: {}", addr);
                             stream.set_nonblocking(false).ok();
                             let app_clone = app.clone();
                             let stream = UnifiedStream::Tcp(stream);
@@ -271,10 +271,10 @@ impl<R: Runtime> SocketServer<R> {
                             thread::spawn(move || {
                                 if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                     if let Err(e) = Self::handle_client(stream, app_clone) {
-                                        error!("[MCP] TCP client error: {}", e);
+                                        error!(target: "mcp", "TCP client error: {}", e);
                                     }
                                 })) {
-                                    error!("[MCP] TCP client handler panicked: {:?}", e);
+                                    error!(target: "mcp", "TCP client handler panicked: {:?}", e);
                                 }
                             });
                         }
@@ -282,7 +282,7 @@ impl<R: Runtime> SocketServer<R> {
                             thread::sleep(Duration::from_millis(100));
                         }
                         Err(e) => {
-                            error!("[MCP] TCP accept error: {}", e);
+                            error!(target: "mcp", "TCP accept error: {}", e);
                             thread::sleep(Duration::from_millis(100));
                         }
                     }
@@ -290,7 +290,7 @@ impl<R: Runtime> SocketServer<R> {
             }
         }
 
-        info!("[MCP] Listener thread ended");
+        info!(target: "mcp", "Listener thread ended");
     }
 
     fn handle_client(stream: UnifiedStream, app: AppHandle<R>) -> Result<(), String> {
@@ -306,7 +306,7 @@ impl<R: Runtime> SocketServer<R> {
                 let mut line = String::new();
                 match reader.read_line(&mut line) {
                     Ok(0) => {
-                        info!("[MCP] Client disconnected");
+                        info!(target: "mcp", "Client disconnected");
                         return Ok(());
                     }
                     Ok(_) => {}
@@ -335,7 +335,7 @@ impl<R: Runtime> SocketServer<R> {
                     }
                 };
 
-                info!("[MCP] Command: {}", request.command);
+                info!(target: "mcp", "Command: {}", request.command);
 
                 let response = tools::handle_command(&app, &request.command, request.payload).await;
 
@@ -398,7 +398,7 @@ impl<R: Runtime> SocketServer<R> {
             let _ = std::fs::remove_file(path);
         }
 
-        info!("[MCP] Socket server stop requested");
+        info!(target: "mcp", "Socket server stop requested");
         Ok(())
     }
 }

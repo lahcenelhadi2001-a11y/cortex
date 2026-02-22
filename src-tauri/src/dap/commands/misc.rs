@@ -60,7 +60,7 @@ pub async fn debug_cancel_request(
     session
         .cancel_request(request_id, progress_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to cancel request in session {session_id}: {e}"))
 }
 
 /// Get loaded sources
@@ -74,7 +74,10 @@ pub async fn debug_loaded_sources(
         .get(&session_id)
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
     let session = session.read().await;
-    session.loaded_sources().await.map_err(|e| e.to_string())
+    session
+        .loaded_sources()
+        .await
+        .map_err(|e| format!("Failed to get loaded sources for session {session_id}: {e}"))
 }
 
 /// Get source content for a source reference (for sources without a path)
@@ -93,7 +96,7 @@ pub async fn debug_source(
     session
         .source(source_reference, source_path.as_deref())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get source content for session {session_id}: {e}"))
 }
 
 /// Get exception info for the current exception
@@ -111,7 +114,7 @@ pub async fn debug_exception_info(
     session
         .exception_info(thread_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get exception info for session {session_id}: {e}"))
 }
 
 /// Get modules loaded by the debuggee
@@ -130,5 +133,5 @@ pub async fn debug_modules(
     session
         .modules(start, count)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get modules for session {session_id}: {e}"))
 }

@@ -113,27 +113,37 @@ impl<R: Runtime> McpState<R> {
 
     /// Start the MCP socket server
     pub fn start(&self, app: &AppHandle<R>) -> Result<(), String> {
-        let mut guard = self.socket_server.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .socket_server
+            .lock()
+            .map_err(|e| format!("Failed to acquire MCP socket server lock: {e}"))?;
 
         if guard.is_some() {
             return Ok(()); // Already started
         }
 
         let mut server = SocketServer::new(app.clone(), self.config.clone());
-        server.start().map_err(|e| e.to_string())?;
+        server
+            .start()
+            .map_err(|e| format!("Failed to start MCP socket server: {e}"))?;
 
         *guard = Some(server);
-        info!("[MCP] Socket server started");
+        info!(target: "mcp", "Socket server started");
         Ok(())
     }
 
     /// Stop the MCP socket server
     pub fn stop(&self) -> Result<(), String> {
-        let mut guard = self.socket_server.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .socket_server
+            .lock()
+            .map_err(|e| format!("Failed to acquire MCP socket server lock: {e}"))?;
 
         if let Some(server) = guard.take() {
-            server.stop().map_err(|e| e.to_string())?;
-            info!("[MCP] Socket server stopped");
+            server
+                .stop()
+                .map_err(|e| format!("Failed to stop MCP socket server: {e}"))?;
+            info!(target: "mcp", "Socket server stopped");
         }
 
         Ok(())
@@ -156,7 +166,7 @@ pub fn init_mcp<R: Runtime>(app: &AppHandle<R>, config: McpConfig) {
     #[cfg(debug_assertions)]
     if config.auto_start {
         if let Err(e) = state.start(app) {
-            error!("[MCP] Failed to start socket server: {}", e);
+            error!(target: "mcp", "Failed to start socket server: {}", e);
         }
     }
 

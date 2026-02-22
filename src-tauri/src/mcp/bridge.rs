@@ -54,14 +54,14 @@ impl McpBridge {
         };
 
         bridge.initialize().await?;
-        info!("[McpBridge] started for project {}", project_path);
+        info!(target: "mcp", "Bridge started for project {}", project_path);
         Ok(bridge)
     }
 
     /// Stop the child process.
     pub async fn stop(&self) -> Result<()> {
         self.transport.kill().await?;
-        info!("[McpBridge] stopped");
+        info!(target: "mcp", "Bridge stopped");
         Ok(())
     }
 
@@ -132,7 +132,7 @@ impl McpBridge {
         self.notify::<()>("notifications/initialized", None).await?;
 
         info!(
-            "[McpBridge] initialized — server: {} v{}",
+            target: "mcp", "Bridge initialized — server: {} v{}",
             response.server_info.name, response.server_info.version
         );
 

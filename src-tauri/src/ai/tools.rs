@@ -155,7 +155,9 @@ impl Tool for ReadFileTool {
             .get("max_lines")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize);
-        let content = fs::read_to_string(path).await.map_err(|e| e.to_string())?;
+        let content = fs::read_to_string(path)
+            .await
+            .map_err(|e| format!("Failed to read file '{path}': {e}"))?;
         let lines: Vec<&str> = content.lines().collect();
         let selected: Vec<&str> = match max {
             Some(m) => lines
@@ -197,7 +199,9 @@ impl Tool for WriteFileTool {
         if let Some(parent) = p.parent() {
             fs::create_dir_all(parent).await.ok();
         }
-        fs::write(&p, content).await.map_err(|e| e.to_string())?;
+        fs::write(&p, content)
+            .await
+            .map_err(|e| format!("Failed to write file '{}': {e}", p.display()))?;
         Ok(format!("Wrote {} bytes to {}", content.len(), p.display()))
     }
 }
@@ -227,7 +231,7 @@ impl Tool for SearchFilesTool {
             .unwrap_or(100) as usize;
         let full = format!("{}/{}", dir, pattern);
         let mut matches = Vec::new();
-        for entry in glob::glob(&full).map_err(|e| e.to_string())? {
+        for entry in glob::glob(&full).map_err(|e| format!("Invalid glob pattern '{full}': {e}"))? {
             if matches.len() >= max {
                 break;
             }
@@ -264,12 +268,15 @@ impl Tool for SearchCodeTool {
             .get("max_results")
             .and_then(|v| v.as_u64())
             .unwrap_or(50) as usize;
-        let regex = regex::Regex::new(pattern).map_err(|e| e.to_string())?;
+        let regex =
+            regex::Regex::new(pattern).map_err(|e| format!("Invalid regex '{pattern}': {e}"))?;
         let glob_pat = file_pat
             .map(|fp| format!("{}/{}", dir, fp))
             .unwrap_or_else(|| format!("{}/**/*", dir));
         let mut results = Vec::new();
-        for entry in glob::glob(&glob_pat).map_err(|e| e.to_string())? {
+        for entry in
+            glob::glob(&glob_pat).map_err(|e| format!("Invalid glob pattern '{glob_pat}': {e}"))?
+        {
             if results.len() >= max {
                 break;
             }
@@ -332,8 +339,8 @@ impl Tool for RunCommandTool {
         }
         let output = tokio::time::timeout(std::time::Duration::from_millis(timeout), c.output())
             .await
-            .map_err(|_| "Timeout")?
-            .map_err(|e| e.to_string())?;
+            .map_err(|_| format!("Command '{cmd}' timed out after {timeout}ms"))?
+            .map_err(|e| format!("Failed to execute command '{cmd}': {e}"))?;
         serde_json::to_string(&serde_json::json!({"exit_code": output.status.code(), "stdout": String::from_utf8_lossy(&output.stdout), "stderr": String::from_utf8_lossy(&output.stderr)}))
             .map_err(|e| format!("JSON serialization failed: {}", e))
     }
@@ -359,8 +366,14 @@ impl Tool for ListDirectoryTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         let mut entries = Vec::new();
-        let mut rd = fs::read_dir(path).await.map_err(|e| e.to_string())?;
-        while let Some(e) = rd.next_entry().await.map_err(|e| e.to_string())? {
+        let mut rd = fs::read_dir(path)
+            .await
+            .map_err(|e| format!("Failed to read directory '{path}': {e}"))?;
+        while let Some(e) = rd
+            .next_entry()
+            .await
+            .map_err(|e| format!("Failed to read directory entry in '{path}': {e}"))?
+        {
             let name = e.file_name().to_string_lossy().to_string();
             if !hidden && name.starts_with('.') {
                 continue;
@@ -456,7 +469,9 @@ impl Tool for EditFileTool {
             .and_then(|v| v.as_u64())
             .map(|v| v as usize);
         let content = args.get("content").and_then(|v| v.as_str());
-        let file_content = fs::read_to_string(path).await.map_err(|e| e.to_string())?;
+        let file_content = fs::read_to_string(path)
+            .await
+            .map_err(|e| format!("Failed to read file '{path}' for editing: {e}"))?;
         let mut lines: Vec<String> = file_content.lines().map(String::from).collect();
         match op {
             "replace" => {
@@ -477,7 +492,7 @@ impl Tool for EditFileTool {
         }
         fs::write(path, lines.join("\n"))
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to write edited file '{path}': {e}"))?;
         serde_json::to_string(&serde_json::json!({"success": true}))
             .map_err(|e| format!("JSON serialization failed: {}", e))
     }

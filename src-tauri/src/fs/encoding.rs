@@ -17,7 +17,8 @@ use crate::fs::types::DirectoryCache;
 /// Detect the line ending style of a file
 #[tauri::command]
 pub fn fs_detect_eol(path: String) -> Result<String, String> {
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file '{path}' for EOL detection: {e}"))?;
 
     // Count different line ending types
     let crlf_count = content.matches("\r\n").count();
@@ -53,7 +54,8 @@ pub fn fs_detect_eol(path: String) -> Result<String, String> {
 /// Convert line endings of a file to the specified style
 #[tauri::command]
 pub fn fs_convert_eol(path: String, target_eol: String) -> Result<(), String> {
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file '{path}' for EOL conversion: {e}"))?;
 
     // Normalize to LF first by replacing all line endings
     let normalized = content
@@ -67,7 +69,8 @@ pub fn fs_convert_eol(path: String, target_eol: String) -> Result<(), String> {
         _ => normalized, // LF (default)
     };
 
-    std::fs::write(&path, converted).map_err(|e| e.to_string())?;
+    std::fs::write(&path, converted)
+        .map_err(|e| format!("Failed to write converted EOL to '{path}': {e}"))?;
 
     info!("Converted line endings of {} to {}", path, target_eol);
     Ok(())

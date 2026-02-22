@@ -186,7 +186,10 @@ pub async fn mcp_disconnect(
 
     if let Some(client) = client {
         let client = client.lock().await;
-        client.shutdown().await.map_err(|e| e.to_string())?;
+        client
+            .shutdown()
+            .await
+            .map_err(|e| format!("Failed to shutdown context server: {e}"))?;
     }
 
     // Emit disconnected event

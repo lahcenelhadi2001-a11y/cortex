@@ -20,7 +20,7 @@ pub async fn cortex_create_session(
         .session_manager
         .create_session(app_handle, options)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to create AI session: {e}"))
 }
 
 /// Send a message to an AI session.
@@ -34,7 +34,7 @@ pub async fn cortex_send_message(
         .session_manager
         .send_message(&session_id, content)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to send message to session {session_id}: {e}"))
 }
 
 /// Approve a tool execution call.
@@ -49,7 +49,7 @@ pub async fn cortex_approve_exec(
         .session_manager
         .approve_exec(&session_id, call_id, approved)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to approve exec for session {session_id}: {e}"))
 }
 
 /// Cancel the current operation in a session.
@@ -59,7 +59,7 @@ pub async fn cortex_cancel(state: State<'_, AIState>, session_id: String) -> Res
         .session_manager
         .interrupt(&session_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to cancel session {session_id}: {e}"))
 }
 
 /// Get the current status/info of a session.
@@ -84,7 +84,7 @@ pub async fn cortex_list_stored_sessions(
         .session_manager
         .storage()
         .list_sessions_sync()
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to list stored sessions: {e}"))
 }
 
 /// Get message history for a session.
@@ -97,7 +97,7 @@ pub async fn cortex_get_history(
         .session_manager
         .storage()
         .get_history_sync(&session_id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get history for session {session_id}: {e}"))
 }
 
 /// Shutdown and destroy a session in memory.
@@ -110,7 +110,7 @@ pub async fn cortex_destroy_session(
         .session_manager
         .destroy_session(&session_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to destroy session {session_id}: {e}"))
 }
 
 /// Delete a session from memory and disk.
@@ -123,7 +123,7 @@ pub async fn cortex_delete_session(
         .session_manager
         .delete_session(&session_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to delete session {session_id}: {e}"))
 }
 
 /// Update the model for an existing session.
@@ -137,7 +137,7 @@ pub async fn cortex_update_model(
         .session_manager
         .update_model(&session_id, &model)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to update model for session {session_id}: {e}"))
 }
 
 /// Update the working directory for an existing session.
@@ -151,7 +151,7 @@ pub async fn cortex_update_cwd(
         .session_manager
         .update_cwd(&session_id, &PathBuf::from(cwd))
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to update working directory for session {session_id}: {e}"))
 }
 
 /// Submit system selection (design system) to a session.
@@ -166,5 +166,5 @@ pub async fn cortex_submit_system(
         .session_manager
         .submit_design_system(&session_id, call_id, config)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to submit design system for session {session_id}: {e}"))
 }

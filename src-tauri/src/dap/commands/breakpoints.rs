@@ -356,5 +356,5 @@ pub async fn debug_data_breakpoint_info(
     session
         .data_breakpoint_info(variables_reference, &name, frame_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get data breakpoint info for session {session_id}: {e}"))
 }

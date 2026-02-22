@@ -196,7 +196,7 @@ pub async fn debug_set_expression(
     session
         .set_expression(&expression, &value, frame_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to set expression in session {session_id}: {e}"))
 }
 
 /// Evaluate an expression in REPL context

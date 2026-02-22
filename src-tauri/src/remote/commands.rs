@@ -15,7 +15,10 @@ pub async fn remote_connect(
     profile: ConnectionProfile,
     state: State<'_, Arc<RemoteManager>>,
 ) -> Result<ConnectionInfo, String> {
-    state.connect(profile).await.map_err(|e| e.to_string())
+    state
+        .connect(profile)
+        .await
+        .map_err(|e| format!("Failed to connect to remote host: {e}"))
 }
 
 #[tauri::command]
@@ -27,7 +30,7 @@ pub async fn remote_connect_with_password(
     state
         .connect_with_credentials(profile, Some(&password), None)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to connect with password: {e}"))
 }
 
 #[tauri::command]
@@ -39,7 +42,7 @@ pub async fn remote_connect_with_passphrase(
     state
         .connect_with_credentials(profile, None, Some(&passphrase))
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to connect with passphrase: {e}"))
 }
 
 #[tauri::command]
@@ -50,7 +53,7 @@ pub async fn remote_disconnect(
     state
         .disconnect(&connection_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to disconnect {connection_id}: {e}"))
 }
 
 #[tauri::command]
@@ -61,7 +64,7 @@ pub async fn remote_get_status(
     state
         .get_connection_status(&connection_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get status for connection {connection_id}: {e}"))
 }
 
 #[tauri::command]
@@ -83,7 +86,10 @@ pub async fn remote_save_profile(
     profile: ConnectionProfile,
     state: State<'_, Arc<RemoteManager>>,
 ) -> Result<(), String> {
-    state.save_profile(profile).await.map_err(|e| e.to_string())
+    state
+        .save_profile(profile)
+        .await
+        .map_err(|e| format!("Failed to save remote profile: {e}"))
 }
 
 #[tauri::command]
@@ -96,7 +102,7 @@ pub async fn remote_save_profile_with_credentials(
     state
         .save_profile_with_credentials(profile, password.as_deref(), passphrase.as_deref())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to save remote profile with credentials: {e}"))
 }
 
 #[tauri::command]
@@ -107,7 +113,7 @@ pub async fn remote_delete_profile(
     state
         .delete_profile(&profile_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to delete remote profile {profile_id}: {e}"))
 }
 
 #[tauri::command]
@@ -119,7 +125,7 @@ pub async fn remote_list_directory(
     state
         .list_directory(&connection_id, &path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to list remote directory '{path}': {e}"))
 }
 
 #[tauri::command]
@@ -132,7 +138,7 @@ pub async fn remote_get_file_tree(
     state
         .get_file_tree(&connection_id, &path, depth)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to get remote file tree for '{path}': {e}"))
 }
 
 #[tauri::command]
@@ -144,7 +150,7 @@ pub async fn remote_read_file(
     state
         .read_file(&connection_id, &path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to read remote file '{path}': {e}"))
 }
 
 #[tauri::command]
@@ -157,7 +163,7 @@ pub async fn remote_write_file(
     state
         .write_file(&connection_id, &path, &content)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to write remote file '{path}': {e}"))
 }
 
 #[tauri::command]
@@ -170,7 +176,7 @@ pub async fn remote_delete(
     state
         .delete(&connection_id, &path, recursive)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to delete remote path '{path}': {e}"))
 }
 
 #[tauri::command]
@@ -183,7 +189,7 @@ pub async fn remote_create_directory(
     state
         .create_directory(&connection_id, &path, recursive)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to create remote directory '{path}': {e}"))
 }
 
 #[tauri::command]
@@ -196,7 +202,7 @@ pub async fn remote_rename(
     state
         .rename(&connection_id, &old_path, &new_path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to rename remote '{old_path}' to '{new_path}': {e}"))
 }
 
 #[tauri::command]
@@ -209,7 +215,7 @@ pub async fn remote_execute_command(
     state
         .execute_command(&connection_id, &command, working_dir.as_deref())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to execute remote command: {e}"))
 }
 
 #[tauri::command]
@@ -221,7 +227,7 @@ pub async fn remote_stat(
     state
         .stat(&connection_id, &path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to stat remote path '{path}': {e}"))
 }
 
 #[tauri::command]

@@ -522,7 +522,10 @@ impl WSLState {
 /// Detect WSL availability and list distributions (uses cache for subsequent calls)
 #[tauri::command]
 pub async fn wsl_detect(state: tauri::State<'_, WSLState>) -> Result<WSLDetectionResult, String> {
-    state.detect_cached().await.map_err(|e| e.to_string())
+    state
+        .detect_cached()
+        .await
+        .map_err(|e| format!("Failed to detect WSL: {e}"))
 }
 
 /// Connect to a WSL distribution
@@ -535,7 +538,7 @@ pub async fn wsl_connect(
         .manager
         .connect(&distro_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to connect to WSL distro '{distro_name}': {e}"))
 }
 
 /// Disconnect from a WSL distribution
@@ -548,7 +551,7 @@ pub async fn wsl_disconnect(
         .manager
         .disconnect(&distro_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to disconnect from WSL distro '{distro_name}': {e}"))
 }
 
 /// Execute a command in a WSL distribution
@@ -558,13 +561,15 @@ pub async fn wsl_execute(
     command: String,
     working_dir: Option<String>,
 ) -> Result<WSLCommandResult, String> {
-    WSLManager::execute(&distro_name, &command, working_dir.as_deref()).map_err(|e| e.to_string())
+    WSLManager::execute(&distro_name, &command, working_dir.as_deref())
+        .map_err(|e| format!("Failed to execute command in WSL distro '{distro_name}': {e}"))
 }
 
 /// Open a folder in a WSL distribution
 #[tauri::command]
 pub async fn wsl_open_folder(distro_name: String, folder_path: String) -> Result<(), String> {
-    WSLManager::open_folder(&distro_name, &folder_path).map_err(|e| e.to_string())
+    WSLManager::open_folder(&distro_name, &folder_path)
+        .map_err(|e| format!("Failed to open folder in WSL distro '{distro_name}': {e}"))
 }
 
 /// Open a terminal in a WSL distribution
@@ -594,7 +599,7 @@ pub async fn wsl_open_terminal(
     terminal_state
         .create_terminal(&app, options)
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to open WSL terminal for '{distro_name}': {e}"))
 }
 
 /// Get available WSL shells for terminal profiles
@@ -606,6 +611,7 @@ pub async fn wsl_get_shells() -> Result<Vec<WSLShellInfo>, String> {
 /// List WSL distributions (alias for wsl_detect for convenience)
 #[tauri::command]
 pub async fn wsl_list_distributions() -> Result<Vec<WSLDistro>, String> {
-    let result = WSLManager::detect_distributions().map_err(|e| e.to_string())?;
+    let result = WSLManager::detect_distributions()
+        .map_err(|e| format!("Failed to list WSL distributions: {e}"))?;
     Ok(result.distros)
 }

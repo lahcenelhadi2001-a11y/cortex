@@ -45,7 +45,7 @@ pub async fn open_workspace(app: AppHandle, path: String) -> Result<WorkspaceCon
         }
 
         info!(
-            "[Workspace] Opened code-workspace: {} ({} folders)",
+            target: "workspace", "Opened code-workspace: {} ({} folders)",
             path,
             config.folders.len()
         );
@@ -72,7 +72,7 @@ pub async fn open_workspace(app: AppHandle, path: String) -> Result<WorkspaceCon
             manager.load_parsed(config.clone(), None);
         }
 
-        info!("[Workspace] Opened folder workspace: {}", path);
+        info!(target: "workspace", "Opened folder workspace: {}", path);
         Ok(config)
     } else {
         Err(format!(
@@ -118,7 +118,7 @@ pub async fn save_workspace(app: AppHandle, path: String) -> Result<(), String> 
         .await
         .map_err(|e| format!("Failed to rename temporary file: {}", e))?;
 
-    info!("[Workspace] Saved workspace to {}", path);
+    info!(target: "workspace", "Saved workspace to {}", path);
     Ok(())
 }
 
@@ -148,7 +148,7 @@ pub async fn add_workspace_folder(
         manager.get_folders()
     };
 
-    info!("[Workspace] Added folder, total: {} folders", folders.len());
+    info!(target: "workspace", "Added folder, total: {} folders", folders.len());
     Ok(folders)
 }
 
@@ -166,7 +166,7 @@ pub async fn remove_workspace_folder(
             .map_err(|e| format!("Failed to acquire workspace lock: {}", e))?;
         let removed = manager.remove_folder(&folder_path);
         if !removed {
-            error!("[Workspace] Folder not found for removal: {}", folder_path);
+            error!(target: "workspace", "Folder not found for removal: {}", folder_path);
         }
         manager.get_folders()
     };

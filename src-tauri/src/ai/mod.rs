@@ -164,7 +164,7 @@ pub async fn ai_complete(
     manager
         .complete(messages, &model, provider)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("AI completion failed for model {model}: {e}"))
 }
 
 /// Stream a conversation response.
@@ -226,7 +226,7 @@ pub async fn ai_stream(
     manager
         .stream(messages, &model, provider, tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("AI streaming failed for model {model}: {e}"))?;
 
     Ok(())
 }
@@ -270,7 +270,7 @@ pub async fn ai_init_threads(
     let mut manager = state.thread_manager.0.lock().await;
     manager
         .initialize(app_data_dir)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to initialize thread manager: {e}"))?;
     Ok(())
 }
 
@@ -286,7 +286,7 @@ pub async fn ai_create_thread(
     let mut manager = state.thread_manager.0.lock().await;
     manager
         .create_thread(model_id, provider, title, system_prompt)
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to create AI thread: {e}"))
 }
 
 /// Get a thread by ID
@@ -306,7 +306,9 @@ pub async fn ai_update_thread(
     thread: Thread,
 ) -> Result<Thread, String> {
     let mut manager = state.thread_manager.0.lock().await;
-    manager.update_thread(thread).map_err(|e| e.to_string())
+    manager
+        .update_thread(thread)
+        .map_err(|e| format!("Failed to update AI thread: {e}"))
 }
 
 /// Delete a thread
@@ -316,7 +318,9 @@ pub async fn ai_delete_thread(
     thread_id: String,
 ) -> Result<(), String> {
     let mut manager = state.thread_manager.0.lock().await;
-    manager.delete_thread(&thread_id).map_err(|e| e.to_string())
+    manager
+        .delete_thread(&thread_id)
+        .map_err(|e| format!("Failed to delete thread {thread_id}: {e}"))
 }
 
 /// List all threads
@@ -360,7 +364,7 @@ pub async fn ai_add_message(
     let mut manager = state.thread_manager.0.lock().await;
     manager
         .add_message(&thread_id, message)
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to add message to thread {thread_id}: {e}"))
 }
 
 /// Get messages from a thread
@@ -370,7 +374,9 @@ pub async fn ai_get_messages(
     thread_id: String,
 ) -> Result<Vec<Message>, String> {
     let manager = state.thread_manager.0.lock().await;
-    manager.get_messages(&thread_id).map_err(|e| e.to_string())
+    manager
+        .get_messages(&thread_id)
+        .map_err(|e| format!("Failed to get messages for thread {thread_id}: {e}"))
 }
 
 /// Clear messages from a thread
@@ -382,7 +388,7 @@ pub async fn ai_clear_messages(
     let mut manager = state.thread_manager.0.lock().await;
     manager
         .clear_messages(&thread_id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to clear messages for thread {thread_id}: {e}"))
 }
 
 // =============================================================================
@@ -398,7 +404,7 @@ pub async fn ai_duplicate_thread(
     let mut manager = state.thread_manager.0.lock().await;
     manager
         .duplicate_thread(&thread_id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Failed to duplicate thread {thread_id}: {e}"))
 }
 
 /// Export a thread to JSON
@@ -408,7 +414,9 @@ pub async fn ai_export_thread(
     thread_id: String,
 ) -> Result<String, String> {
     let manager = state.thread_manager.0.lock().await;
-    manager.export_thread(&thread_id).map_err(|e| e.to_string())
+    manager
+        .export_thread(&thread_id)
+        .map_err(|e| format!("Failed to export thread {thread_id}: {e}"))
 }
 
 /// Import a thread from JSON
@@ -418,7 +426,9 @@ pub async fn ai_import_thread(
     json: String,
 ) -> Result<Thread, String> {
     let mut manager = state.thread_manager.0.lock().await;
-    manager.import_thread(&json).map_err(|e| e.to_string())
+    manager
+        .import_thread(&json)
+        .map_err(|e| format!("Failed to import AI thread: {e}"))
 }
 
 /// Get thread count

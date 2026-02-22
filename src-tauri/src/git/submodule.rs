@@ -17,7 +17,9 @@ pub async fn git_submodule_list(path: String) -> Result<Vec<SubmoduleInfo>, Stri
     tokio::task::spawn_blocking(move || {
         let repo = find_repo(&path)?;
 
-        let submodules = repo.submodules().map_err(|e| e.to_string())?;
+        let submodules = repo
+            .submodules()
+            .map_err(|e| format!("Failed to list git submodules: {e}"))?;
 
         Ok(submodules
             .iter()

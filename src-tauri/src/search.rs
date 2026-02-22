@@ -53,10 +53,10 @@ pub async fn search_replace_all(
             ) {
                 Ok(count) => {
                     total_replaced += count;
-                    info!("[Search] Replaced {} matches in {}", count, path);
+                    info!(target: "search", "Replaced {} matches in {}", count, path);
                 }
                 Err(e) => {
-                    warn!("[Search] Failed to replace in {}: {}", path, e);
+                    warn!(target: "search", "Failed to replace in {}: {}", path, e);
                     return Err(format!("Failed to replace in {}: {}", path, e));
                 }
             }
@@ -65,7 +65,7 @@ pub async fn search_replace_all(
         Ok(total_replaced)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn search_replace_all task: {e}"))?
 }
 
 /// Replace all matches in a single file
@@ -82,7 +82,7 @@ pub async fn search_replace_in_file(
         replace_in_file_internal(path, &matches, &replace_text, use_regex, preserve_case)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn search_replace_in_file task: {e}"))?
 }
 
 /// Request structure for replacing a single match
@@ -116,7 +116,7 @@ pub async fn search_replace_match(request: ReplaceMatchRequest) -> Result<(), St
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn search_replace_match task: {e}"))?
 }
 
 /// Internal function to perform replacements in a file
@@ -270,7 +270,7 @@ pub async fn search_validate_regex(pattern: String) -> Result<RegexValidation, S
         },
     })
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("Failed to spawn regex validation task: {e}"))
 }
 
 /// Get the search history file path from the app data directory
@@ -319,7 +319,7 @@ pub async fn search_history_save(
         .await
         .map_err(|e| format!("Failed to write history: {}", e))?;
 
-    info!("[Search] Saved search history to {}", path.display());
+    info!(target: "search", "Saved search history to {}", path.display());
 
     Ok(())
 }
@@ -344,7 +344,7 @@ pub async fn search_history_load(app: AppHandle) -> Result<SearchHistoryData, St
         serde_json::from_str(&content).map_err(|e| format!("Failed to parse history: {}", e))?;
 
     info!(
-        "[Search] Loaded {} search + {} replace history entries",
+        target: "search", "Loaded {} search + {} replace history entries",
         data.search_entries.len(),
         data.replace_entries.len()
     );
@@ -366,11 +366,11 @@ pub async fn search_undo_replace(file_path: String) -> Result<(), String> {
         fs::copy(&bak, &original).map_err(|e| format!("Failed to restore backup: {}", e))?;
         fs::remove_file(&bak).map_err(|e| format!("Failed to remove backup: {}", e))?;
 
-        info!("[Search] Restored {} from backup", file_path);
+        info!(target: "search", "Restored {} from backup", file_path);
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn undo_replace task: {e}"))?
 }
 
 // ============================================================================
@@ -505,7 +505,7 @@ pub async fn search_workspace(
 
         for result in &response.results {
             if let Err(e) = app.emit("search:streaming-result", &result) {
-                warn!("[Search] Failed to emit streaming result: {}", e);
+                warn!(target: "search", "Failed to emit streaming result: {}", e);
             }
         }
 
@@ -515,7 +515,7 @@ pub async fn search_workspace(
     }
 
     info!(
-        "[Search] Workspace search complete: {} files, {} matches across {} roots",
+        target: "search", "Workspace search complete: {} files, {} matches across {} roots",
         files_searched,
         total_matches,
         roots.len()
@@ -646,14 +646,14 @@ pub async fn search_with_filters(
         }
 
         info!(
-            "[Search] search_with_filters found {} matches in {} files",
+            target: "search", "search_with_filters found {} matches in {} files",
             total_found,
             all_results.len()
         );
         Ok(all_results)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn search_with_filters task: {e}"))?
 }
 
 fn search_directory_recursive(
@@ -775,7 +775,7 @@ pub async fn search_replace_preview(
             let content = match fs::read_to_string(&file_path) {
                 Ok(c) => c,
                 Err(e) => {
-                    warn!("[Search] Failed to read file for preview {}: {}", path, e);
+                    warn!(target: "search", "Failed to read file for preview {}: {}", path, e);
                     continue;
                 }
             };
@@ -852,7 +852,7 @@ pub async fn search_replace_preview(
         })
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("Failed to spawn replace preview task: {e}"))?
 }
 
 // ============================================================================
@@ -876,7 +876,7 @@ pub async fn get_search_history(app: AppHandle) -> Result<Vec<SearchHistoryPersi
         .map_err(|e| format!("Failed to parse search history: {}", e))?;
 
     info!(
-        "[Search] Loaded {} persistent search history entries",
+        target: "search", "Loaded {} persistent search history entries",
         data.entries.len()
     );
 
@@ -923,7 +923,7 @@ pub async fn add_search_history(
         .map_err(|e| format!("Failed to write search history: {}", e))?;
 
     info!(
-        "[Search] Added entry to persistent search history at {}",
+        target: "search", "Added entry to persistent search history at {}",
         path.display()
     );
 
@@ -941,7 +941,7 @@ pub async fn clear_search_history(app: AppHandle) -> Result<(), String> {
             .map_err(|e| format!("Failed to delete search history: {}", e))?;
 
         info!(
-            "[Search] Cleared persistent search history at {}",
+            target: "search", "Cleared persistent search history at {}",
             path.display()
         );
     }
@@ -976,7 +976,7 @@ pub async fn delete_search_history_item(app: AppHandle, id: String) -> Result<()
             .await
             .map_err(|e| format!("Failed to write search history: {}", e))?;
 
-        info!("[Search] Deleted search history item with id: {}", id);
+        info!(target: "search", "Deleted search history item with id: {}", id);
     }
 
     Ok(())
@@ -996,7 +996,7 @@ pub async fn search_history_clear(app: AppHandle) -> Result<(), String> {
         tokio::fs::remove_file(&path)
             .await
             .map_err(|e| format!("Failed to clear search history: {}", e))?;
-        info!("[Search] Cleared search history at {}", path.display());
+        info!(target: "search", "Cleared search history at {}", path.display());
     }
     Ok(())
 }
