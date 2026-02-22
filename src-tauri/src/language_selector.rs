@@ -331,7 +331,7 @@ fn detect_from_content(content: &str) -> Option<DetectionResult> {
 
 /// Get all available languages
 #[tauri::command]
-pub fn language_get_all() -> Vec<LanguageInfo> {
+pub fn language_get_all() -> Result<Vec<LanguageInfo>, String> {
     let registry = get_language_registry();
 
     let mut languages: Vec<LanguageInfo> = registry
@@ -344,26 +344,26 @@ pub fn language_get_all() -> Vec<LanguageInfo> {
         .collect();
 
     languages.sort_by(|a, b| a.name.cmp(&b.name));
-    languages
+    Ok(languages)
 }
 
 /// Get language info by ID
 #[tauri::command]
-pub fn language_get_by_id(id: String) -> Option<LanguageInfo> {
+pub fn language_get_by_id(id: String) -> Result<Option<LanguageInfo>, String> {
     let registry = get_language_registry();
 
-    registry
+    Ok(registry
         .get(id.as_str())
         .map(|(name, extensions)| LanguageInfo {
             id,
             name: name.to_string(),
             extensions: extensions.iter().map(|s| s.to_string()).collect(),
-        })
+        }))
 }
 
 /// Get language by file extension
 #[tauri::command]
-pub fn language_get_by_extension(extension: String) -> Option<LanguageInfo> {
+pub fn language_get_by_extension(extension: String) -> Result<Option<LanguageInfo>, String> {
     let registry = get_language_registry();
     let ext = if extension.starts_with('.') {
         extension.to_lowercase()
@@ -373,13 +373,13 @@ pub fn language_get_by_extension(extension: String) -> Option<LanguageInfo> {
 
     for (id, (name, extensions)) in registry.iter() {
         if extensions.contains(&ext.as_str()) {
-            return Some(LanguageInfo {
+            return Ok(Some(LanguageInfo {
                 id: id.to_string(),
                 name: name.to_string(),
                 extensions: extensions.iter().map(|s| s.to_string()).collect(),
-            });
+            }));
         }
     }
 
-    None
+    Ok(None)
 }

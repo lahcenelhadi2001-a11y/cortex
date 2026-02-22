@@ -558,7 +558,10 @@ async fn execute_fs_is_directory(path: &str) -> BatchResult {
 
 /// Execute multiple commands in a batch with parallel execution
 #[tauri::command]
-pub async fn batch_commands(app: AppHandle, commands: Vec<BatchCommand>) -> Vec<BatchResult> {
+pub async fn batch_commands(
+    app: AppHandle,
+    commands: Vec<BatchCommand>,
+) -> Result<Vec<BatchResult>, String> {
     let cache = app.state::<Arc<BatchCacheState>>();
     let cache = Arc::clone(&cache);
 
@@ -571,7 +574,7 @@ pub async fn batch_commands(app: AppHandle, commands: Vec<BatchCommand>) -> Vec<
         })
         .collect();
 
-    futures::future::join_all(futures).await
+    Ok(futures::future::join_all(futures).await)
 }
 
 /// Execute batch commands with MessagePack serialization for large payloads
@@ -613,33 +616,36 @@ pub async fn batch_commands_msgpack(app: AppHandle, data: String) -> Result<Stri
 
 /// Invalidate cache for a path (called from file watcher)
 #[tauri::command]
-pub async fn batch_cache_invalidate(app: AppHandle, path: String) {
+pub async fn batch_cache_invalidate(app: AppHandle, path: String) -> Result<(), String> {
     let cache = app.state::<Arc<BatchCacheState>>();
     cache.invalidate(&path);
+    Ok(())
 }
 
 /// Invalidate cache for a directory (called from file watcher)
 #[tauri::command]
-pub async fn batch_cache_invalidate_directory(app: AppHandle, path: String) {
+pub async fn batch_cache_invalidate_directory(app: AppHandle, path: String) -> Result<(), String> {
     let cache = app.state::<Arc<BatchCacheState>>();
     cache.invalidate_directory(&path);
+    Ok(())
 }
 
 /// Get cache statistics
 #[tauri::command]
-pub async fn batch_cache_stats(app: AppHandle) -> CacheStats {
+pub async fn batch_cache_stats(app: AppHandle) -> Result<CacheStats, String> {
     let cache = app.state::<Arc<BatchCacheState>>();
-    cache.stats()
+    Ok(cache.stats())
 }
 
 /// Clear all caches
 #[tauri::command]
-pub async fn batch_cache_clear(app: AppHandle) {
+pub async fn batch_cache_clear(app: AppHandle) -> Result<(), String> {
     let cache = app.state::<Arc<BatchCacheState>>();
     cache.file_cache.lock().clear();
     cache.metadata_cache.clear();
     cache.exists_cache.clear();
     cache.invalidated_paths.clear();
+    Ok(())
 }
 
 #[cfg(test)]

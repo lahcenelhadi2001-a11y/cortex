@@ -97,8 +97,8 @@ pub async fn terminal_close_all(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn terminal_get_default_shell() -> String {
-    TerminalState::get_default_shell()
+pub async fn terminal_get_default_shell() -> Result<String, String> {
+    Ok(TerminalState::get_default_shell())
 }
 
 /// Detect available shells on the system for terminal profiles

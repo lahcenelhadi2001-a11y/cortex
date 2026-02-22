@@ -225,12 +225,12 @@ pub async fn remote_stat(
 }
 
 #[tauri::command]
-pub fn remote_generate_profile_id() -> String {
-    Uuid::new_v4().to_string()
+pub fn remote_generate_profile_id() -> Result<String, String> {
+    Ok(Uuid::new_v4().to_string())
 }
 
 #[tauri::command]
-pub fn remote_get_default_key_paths() -> Vec<String> {
+pub fn remote_get_default_key_paths() -> Result<Vec<String>, String> {
     let mut paths = Vec::new();
     if let Some(home) = dirs::home_dir() {
         let ssh_dir = home.join(".ssh");
@@ -244,17 +244,17 @@ pub fn remote_get_default_key_paths() -> Vec<String> {
             }
         }
     }
-    paths
+    Ok(paths)
 }
 
 #[tauri::command]
-pub fn remote_has_stored_password(profile_id: String) -> bool {
-    SecureSshCredentials::has_password(&profile_id)
+pub fn remote_has_stored_password(profile_id: String) -> Result<bool, String> {
+    Ok(SecureSshCredentials::has_password(&profile_id))
 }
 
 #[tauri::command]
-pub fn remote_has_stored_passphrase(profile_id: String) -> bool {
-    SecureSshCredentials::has_passphrase(&profile_id)
+pub fn remote_has_stored_passphrase(profile_id: String) -> Result<bool, String> {
+    Ok(SecureSshCredentials::has_passphrase(&profile_id))
 }
 
 /// Forward a remote port to local port

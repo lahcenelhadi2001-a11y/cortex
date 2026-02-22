@@ -233,8 +233,8 @@ pub async fn copy_logs_to_clipboard(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+pub async fn get_version() -> Result<String, String> {
+    Ok(env!("CARGO_PKG_VERSION").to_string())
 }
 
 #[tauri::command]

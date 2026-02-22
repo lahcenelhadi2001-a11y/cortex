@@ -162,8 +162,8 @@ pub async fn fs_write_file_with_encoding(
 
 /// Get list of supported encodings
 #[tauri::command]
-pub fn fs_get_supported_encodings() -> Vec<String> {
-    vec![
+pub fn fs_get_supported_encodings() -> Result<Vec<String>, String> {
+    Ok(vec![
         "UTF-8".to_string(),
         "UTF-16LE".to_string(),
         "UTF-16BE".to_string(),
@@ -190,5 +190,5 @@ pub fn fs_get_supported_encodings() -> Vec<String> {
         "windows-1256".to_string(),
         "windows-1257".to_string(),
         "windows-1258".to_string(),
-    ]
+    ])
 }

@@ -404,8 +404,8 @@ pub async fn formatter_check_available(
 
 /// Get the parser for a file extension
 #[tauri::command]
-pub fn formatter_get_parser(file_path: String) -> Option<String> {
+pub fn formatter_get_parser(file_path: String) -> Result<Option<String>, String> {
     let path = Path::new(&file_path);
-    let ext = path.extension().and_then(|e| e.to_str())?;
-    get_parser_for_extension(ext).map(|s| s.to_string())
+    let ext = path.extension().and_then(|e| e.to_str());
+    Ok(ext.and_then(|e| get_parser_for_extension(e).map(|s| s.to_string())))
 }

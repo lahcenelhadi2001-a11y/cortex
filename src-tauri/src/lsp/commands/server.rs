@@ -92,14 +92,17 @@ pub async fn lsp_stop_all_servers(state: State<'_, LspState>) -> Result<(), Stri
 
 /// Get list of running servers
 #[tauri::command]
-pub fn lsp_list_servers(state: State<'_, LspState>) -> Vec<ServerInfo> {
-    state.clients.lock().values().map(|c| c.info()).collect()
+pub fn lsp_list_servers(state: State<'_, LspState>) -> Result<Vec<ServerInfo>, String> {
+    Ok(state.clients.lock().values().map(|c| c.info()).collect())
 }
 
 /// Get server info
 #[tauri::command]
-pub fn lsp_get_server_info(server_id: String, state: State<'_, LspState>) -> Option<ServerInfo> {
-    state.clients.lock().get(&server_id).map(|c| c.info())
+pub fn lsp_get_server_info(
+    server_id: String,
+    state: State<'_, LspState>,
+) -> Result<Option<ServerInfo>, String> {
+    Ok(state.clients.lock().get(&server_id).map(|c| c.info()))
 }
 
 /// Restart a language server
@@ -177,10 +180,10 @@ pub fn lsp_clear_logs(server_id: String, state: State<'_, LspState>) -> Result<(
 pub fn lsp_get_servers_for_language(
     language: String,
     state: State<'_, LspState>,
-) -> Vec<ServerInfo> {
-    state
+) -> Result<Vec<ServerInfo>, String> {
+    Ok(state
         .get_clients_for_language(&language)
         .iter()
         .map(|c| c.info())
-        .collect()
+        .collect())
 }

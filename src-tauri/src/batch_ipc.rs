@@ -169,7 +169,10 @@ fn dispatch_get_default_keybindings(id: String) -> BatchedResult {
 /// Each call is dispatched concurrently. Results are returned in the same
 /// order as the input calls.
 #[tauri::command]
-pub async fn batch_invoke(app: AppHandle, calls: Vec<BatchedCall>) -> Vec<BatchedResult> {
+pub async fn batch_invoke(
+    app: AppHandle,
+    calls: Vec<BatchedCall>,
+) -> Result<Vec<BatchedResult>, String> {
     debug!("batch_invoke: dispatching {} calls", calls.len());
 
     let futures: Vec<_> = calls
@@ -180,7 +183,7 @@ pub async fn batch_invoke(app: AppHandle, calls: Vec<BatchedCall>) -> Vec<Batche
         })
         .collect();
 
-    futures::future::join_all(futures).await
+    Ok(futures::future::join_all(futures).await)
 }
 
 #[cfg(test)]

@@ -827,8 +827,8 @@ pub async fn ssh_delete_profile(app: AppHandle, profile_id: String) -> Result<()
 
 /// Generate a unique profile ID
 #[tauri::command]
-pub fn ssh_generate_profile_id() -> String {
-    uuid::Uuid::new_v4().to_string()
+pub fn ssh_generate_profile_id() -> Result<String, String> {
+    Ok(uuid::Uuid::new_v4().to_string())
 }
 
 /// List all SSH profiles

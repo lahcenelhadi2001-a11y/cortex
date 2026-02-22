@@ -427,16 +427,16 @@ pub async fn restart_app(app: AppHandle) -> Result<(), String> {
 
 /// Get the current application version
 #[tauri::command]
-pub fn get_app_version(app: AppHandle) -> String {
-    get_current_version(&app)
+pub fn get_app_version(app: AppHandle) -> Result<String, String> {
+    Ok(get_current_version(&app))
 }
 
 /// Get skipped version from local storage (handled by frontend)
 /// This is a placeholder - actual storage is managed by frontend localStorage
 #[tauri::command]
-pub fn get_skipped_version() -> Option<String> {
+pub fn get_skipped_version() -> Result<Option<String>, String> {
     // Skipped version is stored in frontend localStorage
-    None
+    Ok(None)
 }
 
 /// Set skipped version (handled by frontend)

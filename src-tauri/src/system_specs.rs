@@ -236,48 +236,52 @@ pub fn format_bytes(bytes: u64) -> String {
 pub async fn get_system_specs(app: AppHandle) -> Result<SystemSpecs, String> {
     info!("Fetching system specifications");
 
-    let mut sys = System::new_with_specifics(
-        RefreshKind::new()
-            .with_cpu(CpuRefreshKind::everything())
-            .with_memory(MemoryRefreshKind::everything()),
-    );
-
-    // Give the system time to gather CPU metrics
-    std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-    sys.refresh_cpu_all();
-
-    let app_version = env!("CARGO_PKG_VERSION").to_string();
-
-    let cpu_info = CpuInfo {
-        brand: sys
-            .cpus()
-            .first()
-            .map(|cpu| cpu.brand().to_string())
-            .unwrap_or_else(|| "Unknown".to_string()),
-        core_count: sys.cpus().len(),
-        usage: sys.global_cpu_usage(),
-        frequency: sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0),
-    };
-
     let installed_extensions = get_installed_extensions(&app);
 
-    let specs = SystemSpecs {
-        app_version,
-        os_name: get_os_name(),
-        os_version: get_os_version(),
-        architecture: env::consts::ARCH.to_string(),
-        total_memory: sys.total_memory(),
-        used_memory: sys.used_memory(),
-        available_memory: sys.available_memory(),
-        cpu_info,
-        gpu_info: get_gpu_info(),
-        installed_extensions,
-        build_type: if cfg!(debug_assertions) {
-            "Debug".to_string()
-        } else {
-            "Release".to_string()
-        },
-    };
+    let specs = tokio::task::spawn_blocking(move || {
+        let mut sys = System::new_with_specifics(
+            RefreshKind::new()
+                .with_cpu(CpuRefreshKind::everything())
+                .with_memory(MemoryRefreshKind::everything()),
+        );
+
+        // Give the system time to gather CPU metrics
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        sys.refresh_cpu_all();
+
+        let app_version = env!("CARGO_PKG_VERSION").to_string();
+
+        let cpu_info = CpuInfo {
+            brand: sys
+                .cpus()
+                .first()
+                .map(|cpu| cpu.brand().to_string())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            core_count: sys.cpus().len(),
+            usage: sys.global_cpu_usage(),
+            frequency: sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0),
+        };
+
+        SystemSpecs {
+            app_version,
+            os_name: get_os_name(),
+            os_version: get_os_version(),
+            architecture: env::consts::ARCH.to_string(),
+            total_memory: sys.total_memory(),
+            used_memory: sys.used_memory(),
+            available_memory: sys.available_memory(),
+            cpu_info,
+            gpu_info: get_gpu_info(),
+            installed_extensions,
+            build_type: if cfg!(debug_assertions) {
+                "Debug".to_string()
+            } else {
+                "Release".to_string()
+            },
+        }
+    })
+    .await
+    .map_err(|e| format!("Failed to collect system specs: {}", e))?;
 
     Ok(specs)
 }
@@ -285,32 +289,38 @@ pub async fn get_system_specs(app: AppHandle) -> Result<SystemSpecs, String> {
 /// Get current live metrics (CPU and memory usage)
 #[tauri::command]
 pub async fn get_live_metrics() -> Result<LiveMetrics, String> {
-    let mut sys = System::new_with_specifics(
-        RefreshKind::new()
-            .with_cpu(CpuRefreshKind::everything())
-            .with_memory(MemoryRefreshKind::everything()),
-    );
+    let metrics = tokio::task::spawn_blocking(move || {
+        let mut sys = System::new_with_specifics(
+            RefreshKind::new()
+                .with_cpu(CpuRefreshKind::everything())
+                .with_memory(MemoryRefreshKind::everything()),
+        );
 
-    // Give the system time to gather CPU metrics
-    std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-    sys.refresh_cpu_all();
+        // Give the system time to gather CPU metrics
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        sys.refresh_cpu_all();
 
-    let total_memory = sys.total_memory();
-    let used_memory = sys.used_memory();
-    let available_memory = sys.available_memory();
+        let total_memory = sys.total_memory();
+        let used_memory = sys.used_memory();
+        let available_memory = sys.available_memory();
 
-    let memory_percent = if total_memory > 0 {
-        (used_memory as f32 / total_memory as f32) * 100.0
-    } else {
-        0.0
-    };
+        let memory_percent = if total_memory > 0 {
+            (used_memory as f32 / total_memory as f32) * 100.0
+        } else {
+            0.0
+        };
 
-    Ok(LiveMetrics {
-        cpu_usage: sys.global_cpu_usage(),
-        used_memory,
-        available_memory,
-        memory_percent,
+        LiveMetrics {
+            cpu_usage: sys.global_cpu_usage(),
+            used_memory,
+            available_memory,
+            memory_percent,
+        }
     })
+    .await
+    .map_err(|e| format!("Failed to collect live metrics: {}", e))?;
+
+    Ok(metrics)
 }
 
 /// Start streaming live metrics updates
