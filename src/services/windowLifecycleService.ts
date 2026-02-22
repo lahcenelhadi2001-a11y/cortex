@@ -44,33 +44,6 @@ export const windowLifecycleService = {
     }
   },
 
-  async performCleanup(): Promise<void> {
-    if (isCleaningUp) return;
-    isCleaningUp = true;
-
-    try {
-      const sessionId = cleanupCallbacks?.getActiveSessionId();
-
-      const tasks: Promise<unknown>[] = [];
-
-      if (sessionId) {
-        tasks.push(
-          invoke("cortex_cancel", { sessionId }).catch(() => {}),
-        );
-      }
-
-      tasks.push(
-        invoke("agent_cleanup").catch(() => {}),
-      );
-
-      await Promise.allSettled(tasks);
-    } catch {
-      // Best-effort cleanup
-    } finally {
-      isCleaningUp = false;
-    }
-  },
-
   performSyncCleanup(): void {
     if (isCleaningUp) return;
     isCleaningUp = true;

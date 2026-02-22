@@ -10,18 +10,29 @@
  * - Force close (Cmd+Q / Alt+F4): fires cleanup commands to backend
  *
  * Must be called inside a component wrapped by OptimizedProviders
- * (requires EditorContext, NotificationsContext, and SDKContext).
+ * (requires EditorContext and NotificationsContext).
  */
 
 import { onMount, onCleanup } from "solid-js";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEditor } from "@/context/EditorContext";
 import { useNotifications } from "@/context/NotificationsContext";
+import { useSDK } from "@/context/SDKContext";
 import { windowLifecycleService } from "@/services/windowLifecycleService";
 
 export function useWindowEvents(): void {
   const editor = useEditor();
   const notifications = useNotifications();
+
+  // Resolve SDK context synchronously within the component owner.
+  // useSDK() is safe here because OptimizedProviders mounts SDKProvider
+  // above AppContent where this hook is called.
+  let sdk: ReturnType<typeof useSDK> | null = null;
+  try {
+    sdk = useSDK();
+  } catch {
+    // Not inside SDKProvider (e.g. auxiliary windows) — leave null
+  }
 
   onMount(() => {
     const appWindow = getCurrentWebviewWindow();
@@ -36,24 +47,8 @@ export function useWindowEvents(): void {
       () => editor.selectors.hasModifiedFiles(),
     );
 
-    let sdkSessionAccessor: (() => string | null) | null = null;
-    try {
-      // Dynamically import to avoid hard dependency; SDKContext may not
-      // always be mounted (e.g. auxiliary windows).
-      import("@/context/SDKContext").then(({ useSDK }) => {
-        try {
-          const sdk = useSDK();
-          sdkSessionAccessor = () => sdk.state.currentSession?.id ?? null;
-        } catch {
-          // Not inside SDKProvider — leave null
-        }
-      }).catch(() => {});
-    } catch {
-      // Module not available
-    }
-
     windowLifecycleService.setCleanupCallbacks({
-      getActiveSessionId: () => sdkSessionAccessor?.() ?? null,
+      getActiveSessionId: () => sdk?.state.currentSession?.id ?? null,
       getDirtyFileIds: () => editor.selectors.modifiedFileIds(),
       getOpenFilePaths: () =>
         editor.state.openFiles.map((f) => f.path),
