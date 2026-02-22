@@ -184,3 +184,11 @@ export type { VirtualListProps, VirtualListVariableProps } from "./VirtualList";
 // Confirm Dialog
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
+
+// Scroll Area
+export { ScrollArea } from "./ScrollArea";
+export type { ScrollAreaProps } from "./ScrollArea";
+
+// Split Pane
+export { SplitPane } from "./SplitPane";
+export type { SplitPaneProps } from "./SplitPane";

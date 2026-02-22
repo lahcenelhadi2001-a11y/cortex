@@ -82,6 +82,10 @@ export {
   // Avatar
   Avatar,
   AvatarGroup,
+  
+  // Scroll & Split
+  ScrollArea,
+  SplitPane,
 } from "../components/ui";
 
 // Re-export types
@@ -126,4 +130,6 @@ export type {
   LoadingSpinnerProps,
   AvatarProps,
   AvatarGroupProps,
+  ScrollAreaProps,
+  SplitPaneProps,
 } from "../components/ui";
