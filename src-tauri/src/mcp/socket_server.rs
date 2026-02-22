@@ -120,6 +120,8 @@ pub struct SocketServer<R: Runtime> {
     app: AppHandle<R>,
     config: McpConfig,
     running: Arc<Mutex<bool>>,
+    /// Resolved socket path for IPC cleanup on stop
+    socket_path: Option<std::path::PathBuf>,
 }
 
 impl<R: Runtime> SocketServer<R> {
@@ -128,6 +130,7 @@ impl<R: Runtime> SocketServer<R> {
             app,
             config,
             running: Arc::new(Mutex::new(false)),
+            socket_path: None,
         }
     }
 
@@ -166,6 +169,9 @@ impl<R: Runtime> SocketServer<R> {
                 let ipc_listener = opts
                     .create_sync()
                     .map_err(|e| format!("Failed to create IPC socket: {}", e))?;
+
+                // Store the socket path for cleanup on stop
+                self.socket_path = Some(socket_path);
 
                 UnifiedListener::Ipc(ipc_listener)
             }
@@ -270,10 +276,7 @@ impl<R: Runtime> SocketServer<R> {
     }
 
     fn handle_client(stream: UnifiedStream, app: AppHandle<R>) -> Result<(), String> {
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| format!("Failed to create runtime: {}", e))?;
-
-        rt.block_on(async {
+        tauri::async_runtime::block_on(async {
             let stream_clone = stream
                 .try_clone()
                 .map_err(|e| format!("Failed to clone stream: {}", e))?;
@@ -338,6 +341,45 @@ impl<R: Runtime> SocketServer<R> {
             .running
             .lock()
             .map_err(|_| "Failed to acquire running lock")? = false;
+
+        // Unblock the IPC listener by making a dummy connection
+        match &self.config.socket_type {
+            SocketType::Ipc { path } => {
+                let socket_path = path.clone().unwrap_or_else(get_default_socket_path);
+
+                #[cfg(not(target_os = "windows"))]
+                {
+                    if let Ok(name) = socket_path
+                        .to_string_lossy()
+                        .to_string()
+                        .to_fs_name::<GenericFilePath>()
+                    {
+                        let _ = IpcStream::connect(name);
+                    }
+                }
+
+                #[cfg(target_os = "windows")]
+                {
+                    if let Ok(name) = socket_path
+                        .to_string_lossy()
+                        .to_string()
+                        .to_ns_name::<GenericNamespaced>()
+                    {
+                        let _ = IpcStream::connect(name);
+                    }
+                }
+            }
+            SocketType::Tcp { host, port } => {
+                let _ = TcpStream::connect(format!("{}:{}", host, port));
+            }
+        }
+
+        // Clean up Unix socket file
+        #[cfg(not(target_os = "windows"))]
+        if let Some(ref path) = self.socket_path {
+            let _ = std::fs::remove_file(path);
+        }
+
         info!("[MCP] Socket server stop requested");
         Ok(())
     }

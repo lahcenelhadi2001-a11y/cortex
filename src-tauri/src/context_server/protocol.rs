@@ -2,11 +2,12 @@
 //!
 //! Implements the Model Context Protocol client for communicating with context servers.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicI32, Ordering};
+use std::time::Duration;
 
 use super::transport::{AsyncHttpTransport, AsyncStdioTransport};
 use super::types::*;
@@ -170,6 +171,9 @@ impl McpClient {
         self.request("completion/complete", Some(params)).await
     }
 
+    /// Default timeout for JSON-RPC requests (30 seconds)
+    const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+
     /// Send a JSON-RPC request and wait for response
     async fn request<P: Serialize, R: DeserializeOwned>(
         &self,
@@ -191,20 +195,37 @@ impl McpClient {
         let response_json = match &self.transport {
             McpTransport::Stdio(transport) => {
                 transport.send_async(&request_json).await?;
-                transport.receive_async().await?
+                tokio::time::timeout(Self::REQUEST_TIMEOUT, transport.receive_async())
+                    .await
+                    .map_err(|_| {
+                        anyhow!(
+                            "MCP request '{}' timed out after {:?}",
+                            method,
+                            Self::REQUEST_TIMEOUT
+                        )
+                    })??
             }
             McpTransport::Http(transport) => transport.request(&request_json).await?,
         };
 
         let response: JsonRpcResponse<R> =
-            serde_json::from_str(&response_json).context("Failed to parse response")?;
+            serde_json::from_str(&response_json).context("Failed to parse JSON-RPC response")?;
+
+        // Validate response ID matches request ID
+        let response_id = match &response.id {
+            RequestId::Int(n) => *n,
+            RequestId::Str(s) => s.parse::<i64>().unwrap_or(-1),
+        };
+        if response_id != id {
+            return Err(anyhow!(
+                "JSON-RPC response ID mismatch: expected {}, got {}",
+                id,
+                response_id
+            ));
+        }
 
         if let Some(error) = response.error {
-            return Err(anyhow::anyhow!(
-                "MCP error {}: {}",
-                error.code,
-                error.message
-            ));
+            return Err(anyhow!("MCP error {}: {}", error.code, error.message));
         }
 
         response

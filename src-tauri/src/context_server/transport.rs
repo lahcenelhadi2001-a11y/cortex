@@ -226,6 +226,15 @@ impl AsyncStdioTransport {
 
         let length = content_length.context("Missing Content-Length header")?;
 
+        // Security: Prevent DoS via oversized messages
+        if length > MAX_MESSAGE_SIZE {
+            return Err(anyhow!(
+                "Message too large: {} bytes (max: {} bytes)",
+                length,
+                MAX_MESSAGE_SIZE
+            ));
+        }
+
         // Read body
         let mut body = vec![0u8; length];
         tokio::io::AsyncReadExt::read_exact(&mut *stdout, &mut body)

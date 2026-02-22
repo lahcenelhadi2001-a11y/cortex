@@ -463,7 +463,7 @@ async fn handle_get_dom<R: Runtime>(app: &AppHandle<R>, payload: Value) -> Socke
     let (tx, rx) = mpsc::channel::<String>();
 
     // Listen for response event (one-time)
-    let _listener_id = app.once("mcp:get-dom-response", move |event| {
+    let listener_id = app.once("mcp:get-dom-response", move |event| {
         let payload = event.payload().to_string();
         let _ = tx.send(payload);
     });
@@ -475,6 +475,7 @@ async fn handle_get_dom<R: Runtime>(app: &AppHandle<R>, payload: Value) -> Socke
 
     // Emit event to frontend to get DOM
     if let Err(e) = app.emit_to(&request.window_label, "mcp:get-dom", &event_payload) {
+        app.unlisten(listener_id);
         return SocketResponse::error(format!("Failed to emit get-dom event: {}", e));
     }
 
@@ -506,7 +507,10 @@ async fn handle_get_dom<R: Runtime>(app: &AppHandle<R>, payload: Value) -> Socke
 
             SocketResponse::success(GetDomResponse { html })
         }
-        Err(_) => SocketResponse::error("Get DOM timed out".to_string()),
+        Err(_) => {
+            app.unlisten(listener_id);
+            SocketResponse::error("Get DOM timed out".to_string())
+        }
     }
 }
 
@@ -562,7 +566,10 @@ async fn handle_execute_js<R: Runtime>(app: &AppHandle<R>, payload: Value) -> So
 
             SocketResponse::success(ExecuteJsResponse { result })
         }
-        Err(_) => SocketResponse::error("Script execution timed out".to_string()),
+        Err(_) => {
+            app.unlisten(listener_id);
+            SocketResponse::error("Script execution timed out".to_string())
+        }
     }
 }
 
@@ -642,7 +649,7 @@ async fn handle_text_input(payload: Value) -> SocketResponse {
             if let Err(e) = enigo.text(&c.to_string()) {
                 return SocketResponse::error(format!("Failed to type char: {}", e));
             }
-            std::thread::sleep(std::time::Duration::from_millis(delay));
+            tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
         }
     }
 
@@ -675,7 +682,7 @@ async fn handle_mouse(payload: Value) -> SocketResponse {
         "click" => enigo.button(Button::Left, enigo::Direction::Click),
         "doubleClick" => {
             let _ = enigo.button(Button::Left, enigo::Direction::Click);
-            std::thread::sleep(std::time::Duration::from_millis(50));
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             enigo.button(Button::Left, enigo::Direction::Click)
         }
         "rightClick" => enigo.button(Button::Right, enigo::Direction::Click),
@@ -768,9 +775,11 @@ async fn handle_get_element_position<R: Runtime>(
         }
     };
 
+    let selector_json =
+        serde_json::to_string(&request.selector).unwrap_or_else(|_| "null".to_string());
     let script = format!(
         r#"(function() {{
-            const el = document.querySelector('{}');
+            const el = document.querySelector({});
             if (!el) return {{ found: false }};
             const rect = el.getBoundingClientRect();
             return {{
@@ -781,7 +790,7 @@ async fn handle_get_element_position<R: Runtime>(
                 height: rect.height
             }};
         }})()"#,
-        request.selector.replace("'", "\\'")
+        selector_json
     );
 
     match window.eval(&script) {
@@ -817,17 +826,19 @@ async fn handle_send_text_to_element<R: Runtime>(
         }
     };
 
+    let selector_json =
+        serde_json::to_string(&request.selector).unwrap_or_else(|_| "null".to_string());
+    let text_json = serde_json::to_string(&request.text).unwrap_or_else(|_| "null".to_string());
     let script = format!(
         r#"(function() {{
-            const el = document.querySelector('{}');
+            const el = document.querySelector({});
             if (!el) return false;
             el.focus();
-            el.value = '{}';
+            el.value = {};
             el.dispatchEvent(new Event('input', {{ bubbles: true }}));
             return true;
         }})()"#,
-        request.selector.replace("'", "\\'"),
-        request.text.replace("'", "\\'").replace("\n", "\\n")
+        selector_json, text_json
     );
 
     match window.eval(&script) {

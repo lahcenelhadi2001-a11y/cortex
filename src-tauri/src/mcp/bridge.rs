@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
@@ -22,6 +23,9 @@ use crate::context_server::types::{
 
 /// JSON-RPC version constant.
 const JSON_RPC_VERSION: &str = "2.0";
+
+/// Default timeout for JSON-RPC requests (30 seconds).
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Bridge to the Node.js MCP server.
 pub struct McpBridge {
@@ -152,10 +156,33 @@ impl McpBridge {
         let request_str = serde_json::to_string(&request)?;
 
         self.transport.send_async(&request_str).await?;
-        let response_str = self.transport.receive_async().await?;
+        let response_str = tokio::time::timeout(REQUEST_TIMEOUT, self.transport.receive_async())
+            .await
+            .map_err(|_| {
+                anyhow!(
+                    "MCP request '{}' timed out after {:?}",
+                    method,
+                    REQUEST_TIMEOUT
+                )
+            })??;
 
         let response: Value =
             serde_json::from_str(&response_str).context("Invalid JSON-RPC response")?;
+
+        // Validate JSON-RPC version
+        if response.get("jsonrpc").and_then(|v| v.as_str()) != Some(JSON_RPC_VERSION) {
+            return Err(anyhow!("Invalid or missing jsonrpc version in response"));
+        }
+
+        // Validate response ID matches request ID
+        let response_id = response.get("id").and_then(|v| v.as_i64()).unwrap_or(-1);
+        if response_id != id {
+            return Err(anyhow!(
+                "JSON-RPC response ID mismatch: expected {}, got {}",
+                id,
+                response_id
+            ));
+        }
 
         if let Some(err) = response.get("error") {
             let code = err.get("code").and_then(|c| c.as_i64()).unwrap_or(-1);
