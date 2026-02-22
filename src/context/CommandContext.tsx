@@ -80,10 +80,14 @@ export function CommandProvider(props: { children: JSX.Element }) {
           }
           await invoke("vscode_execute_command", { command: id, args: [] });
         } catch (e) {
-          console.error(`Failed to execute extension command ${id}:`, e);
+          console.error(`[Command] Failed to execute extension command "${id}":`, e);
         }
       } else {
-        command.action();
+        try {
+          command.action();
+        } catch (e) {
+          console.error(`[Command] Failed to execute command "${id}":`, e);
+        }
       }
     }
   };

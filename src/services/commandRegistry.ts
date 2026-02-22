@@ -111,7 +111,11 @@ export function createCommandRegistry(): CommandRegistry {
   const execute = (id: string): boolean => {
     const entry = entries.get(id);
     if (entry) {
-      entry.handler();
+      try {
+        entry.handler();
+      } catch (err) {
+        console.error(`[CommandRegistry] Error executing command "${id}":`, err);
+      }
       return true;
     }
     return false;

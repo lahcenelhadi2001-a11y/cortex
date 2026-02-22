@@ -347,6 +347,19 @@ function AppContent(props: ParentProps) {
     }
   };
 
+  const handleTasksJsonEditor = () => setShowTasksJsonEditor(true);
+  const handleGitCloneRepository = () => setShowCloneRepository(true);
+  const handleTerminalNew = () => setTerminalUsed(true);
+  const handleTerminalOpen = () => setTerminalUsed(true);
+  const handleReplOpen = () => setReplUsed(true);
+  const handleJournalOpen = () => setJournalUsed(true);
+  const handleSnippetsOpen = () => setSnippetsUsed(true);
+  const handleAiOpen = () => setAiUsed(true);
+  const handleTasksOpen = () => setTasksUsed(true);
+  const handleBookmarksOpen = () => setBookmarksUsed(true);
+  const handleDebugStart = () => setDebugUsed(true);
+  const handleDevInspector = () => setDevToolsEnabled(true);
+
   onMount(() => {
     if (import.meta.env.DEV) console.log(`[STARTUP] AppContent mounted @ ${performance.now().toFixed(1)}ms`);
 
@@ -360,20 +373,20 @@ function AppContent(props: ParentProps) {
     window.addEventListener("feedback:open", handleFeedbackOpen as EventListener);
     window.addEventListener("settings:open", handleSettingsOpen);
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("tasks:open-json-editor", () => setShowTasksJsonEditor(true));
-    window.addEventListener("git:clone-repository", () => setShowCloneRepository(true));
+    window.addEventListener("tasks:open-json-editor", handleTasksJsonEditor);
+    window.addEventListener("git:clone-repository", handleGitCloneRepository);
     
     // Feature activation listeners - gate lazy loading
-    window.addEventListener("terminal:new", () => setTerminalUsed(true));
-    window.addEventListener("terminal:open", () => setTerminalUsed(true));
-    window.addEventListener("repl:open", () => setReplUsed(true));
-    window.addEventListener("journal:open", () => setJournalUsed(true));
-    window.addEventListener("snippets:open", () => setSnippetsUsed(true));
-    window.addEventListener("ai:open", () => setAiUsed(true));
-    window.addEventListener("tasks:open", () => setTasksUsed(true));
-    window.addEventListener("bookmarks:open", () => setBookmarksUsed(true));
-    window.addEventListener("debug:start", () => setDebugUsed(true));
-    window.addEventListener("dev:inspector", () => setDevToolsEnabled(true));
+    window.addEventListener("terminal:new", handleTerminalNew);
+    window.addEventListener("terminal:open", handleTerminalOpen);
+    window.addEventListener("repl:open", handleReplOpen);
+    window.addEventListener("journal:open", handleJournalOpen);
+    window.addEventListener("snippets:open", handleSnippetsOpen);
+    window.addEventListener("ai:open", handleAiOpen);
+    window.addEventListener("tasks:open", handleTasksOpen);
+    window.addEventListener("bookmarks:open", handleBookmarksOpen);
+    window.addEventListener("debug:start", handleDebugStart);
+    window.addEventListener("dev:inspector", handleDevInspector);
 
     // Deferred MCP initialization
     if ('requestIdleCallback' in window) {
@@ -417,6 +430,18 @@ function AppContent(props: ParentProps) {
     window.removeEventListener("feedback:open", handleFeedbackOpen as EventListener);
     window.removeEventListener("settings:open", handleSettingsOpen);
     window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("tasks:open-json-editor", handleTasksJsonEditor);
+    window.removeEventListener("git:clone-repository", handleGitCloneRepository);
+    window.removeEventListener("terminal:new", handleTerminalNew);
+    window.removeEventListener("terminal:open", handleTerminalOpen);
+    window.removeEventListener("repl:open", handleReplOpen);
+    window.removeEventListener("journal:open", handleJournalOpen);
+    window.removeEventListener("snippets:open", handleSnippetsOpen);
+    window.removeEventListener("ai:open", handleAiOpen);
+    window.removeEventListener("tasks:open", handleTasksOpen);
+    window.removeEventListener("bookmarks:open", handleBookmarksOpen);
+    window.removeEventListener("debug:start", handleDebugStart);
+    window.removeEventListener("dev:inspector", handleDevInspector);
     if (mcpCleanup) mcpCleanup();
     if (cleanupErrorHandler) cleanupErrorHandler();
     invoke("unregister_window", { label: getWindowLabel() }).catch(() => {});
