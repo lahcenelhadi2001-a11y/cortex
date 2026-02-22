@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { MonacoManager } from "@/utils/monacoManager";
 import type * as Monaco from "monaco-editor";
 import { invoke } from "@tauri-apps/api/core";
+import { editorLogger } from "../../utils/logger";
 
 export interface ConflictMarker {
   id: string;
@@ -257,9 +258,21 @@ export const DiffEditor3Way: Component<DiffEditor3WayProps> = (props) => {
   });
 
   onCleanup(() => {
-    currentEditor()?.dispose();
-    baseEditor()?.dispose();
-    incomingEditor()?.dispose();
+    const cur = currentEditor();
+    const base = baseEditor();
+    const inc = incomingEditor();
+    if (cur) {
+      cur.getModel()?.dispose();
+      cur.dispose();
+    }
+    if (base) {
+      base.getModel()?.dispose();
+      base.dispose();
+    }
+    if (inc) {
+      inc.getModel()?.dispose();
+      inc.dispose();
+    }
   });
 
   const resolveConflict = (resolution: "current" | "incoming" | "both" | "both-reverse") => {
@@ -303,8 +316,8 @@ export const DiffEditor3Way: Component<DiffEditor3WayProps> = (props) => {
         path: props.filePath,
         content: merged,
       });
-    } catch (_e) {
-      // onSave callback already received the content
+    } catch (error) {
+      editorLogger.error("Failed to write merged file:", error);
     }
   };
 

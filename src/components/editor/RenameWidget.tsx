@@ -18,6 +18,7 @@
 import { Show, createSignal, createEffect, onCleanup, onMount } from "solid-js";
 import type * as Monaco from "monaco-editor";
 import { invoke } from "@tauri-apps/api/core";
+import { editorLogger } from "../../utils/logger";
 import type { 
   RenameLocation, 
   EditorRange 
@@ -374,7 +375,7 @@ export function RenameWidget(props: RenameWidgetProps) {
       });
       
     } catch (error) {
-      console.error("Failed to prepare rename:", error);
+      editorLogger.error("Failed to prepare rename:", error);
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -452,7 +453,7 @@ export function RenameWidget(props: RenameWidgetProps) {
       }
     } catch (error) {
       // Preview fetch failed - not critical, just don't show preview
-      console.debug("Failed to fetch rename preview:", error);
+      editorLogger.debug("Failed to fetch rename preview:", error);
     }
   };
   
@@ -535,7 +536,7 @@ export function RenameWidget(props: RenameWidgetProps) {
             })),
           });
         } catch (applyError) {
-          console.error(`Failed to apply edits to ${fileUri}:`, applyError);
+          editorLogger.error(`Failed to apply edits to ${fileUri}:`, applyError);
         }
       }
       
@@ -582,7 +583,7 @@ export function RenameWidget(props: RenameWidgetProps) {
       hide();
       
     } catch (error) {
-      console.error("Failed to execute rename:", error);
+      editorLogger.error("Failed to execute rename:", error);
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -618,7 +619,8 @@ export function RenameWidget(props: RenameWidgetProps) {
       showRenameToast("Rename undone");
       undoEdits = [];
     } catch (error) {
-      console.error("Failed to undo rename:", error);
+      editorLogger.error("Failed to undo rename:", error);
+      showRenameToast("Failed to undo rename");
     }
   };
   

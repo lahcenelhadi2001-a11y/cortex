@@ -31,6 +31,7 @@ import {
 import { createStore } from "solid-js/store";
 import type * as Monaco from "monaco-editor";
 import { invoke } from "@tauri-apps/api/core";
+import { editorLogger } from "../../utils/logger";
 import { useLSP, type Range, type TextEdit } from "@/context/LSPContext";
 import { useEditor } from "@/context/EditorContext";
 import { loadStylesheet } from "@/utils/lazyStyles";
@@ -513,15 +514,19 @@ export function LanguageTools(props: LanguageToolsProps) {
       for (const change of edit.documentChanges) {
         if ("kind" in change) {
           // File operations (create, rename, delete)
-          if (change.kind === "create") {
-            await invoke("fs_create_file", { path: change.uri.replace("file://", "") });
-          } else if (change.kind === "rename") {
-            await invoke("fs_rename", {
-              oldPath: change.oldUri.replace("file://", ""),
-              newPath: change.newUri.replace("file://", ""),
-            });
-          } else if (change.kind === "delete") {
-            await invoke("fs_delete_file", { path: change.uri.replace("file://", "") });
+          try {
+            if (change.kind === "create") {
+              await invoke("fs_create_file", { path: change.uri.replace("file://", "") });
+            } else if (change.kind === "rename") {
+              await invoke("fs_rename", {
+                oldPath: change.oldUri.replace("file://", ""),
+                newPath: change.newUri.replace("file://", ""),
+              });
+            } else if (change.kind === "delete") {
+              await invoke("fs_delete_file", { path: change.uri.replace("file://", "") });
+            }
+          } catch (error) {
+            editorLogger.error(`Failed to apply file operation (${change.kind}):`, error);
           }
         } else {
           // Text document edit
@@ -553,11 +558,15 @@ export function LanguageTools(props: LanguageToolsProps) {
     const serverId = currentServerId();
     if (!serverId) return;
 
-    await invoke("lsp_execute_command", {
-      serverId,
-      command: command.command,
-      arguments: command.arguments,
-    });
+    try {
+      await invoke("lsp_execute_command", {
+        serverId,
+        command: command.command,
+        arguments: command.arguments,
+      });
+    } catch (error) {
+      editorLogger.error("Failed to execute LSP command:", error);
+    }
   }
 
   // ===========================================================================
