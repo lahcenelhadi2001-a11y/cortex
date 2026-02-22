@@ -1,6 +1,7 @@
 import { Show, Suspense, createSignal, createMemo, createEffect, onMount, onCleanup, JSX, lazy, For } from "solid-js";
 import { useEditor, SplitDirection, OpenFile, EditorGroup } from "@/context/EditorContext";
 import { CodeEditor } from "./CodeEditor";
+import { LazyEditor } from "./LazyEditor";
 import { TabBar } from "./TabBar";
 import { ImageViewer, isImageFile, SVGPreview, isSVGFile } from "../viewers";
 import { Icon } from "../ui/Icon";
@@ -139,9 +140,33 @@ function EditorGroupPanel(props: EditorGroupPanelProps) {
           totalGroups={props.totalGroups}
         />
       </div>
-      <Show when={activeFile()}>
-        <FileViewer 
-          file={activeFile()!} 
+      {/* Render LazyEditor wrappers for all code files — inactive ones are
+          hidden via CSS display:none while preserving their Monaco models.
+          Non-code files (images, SVG, settings) still use the active-only FileViewer. */}
+      <For each={files()}>
+        {(file) => {
+          const isCode = () =>
+            file.path !== SETTINGS_VIRTUAL_PATH &&
+            !isImageFile(file.name);
+          const isActive = () => file.id === props.group.activeFileId;
+          return (
+            <Show when={isCode()}>
+              <LazyEditor
+                file={file}
+                isActive={isActive()}
+                groupId={props.group.id}
+              />
+            </Show>
+          );
+        }}
+      </For>
+      {/* Active non-code files (images, SVG, settings) rendered via FileViewer */}
+      <Show when={activeFile() && (
+        activeFile()!.path === SETTINGS_VIRTUAL_PATH ||
+        isImageFile(activeFile()!.name)
+      )}>
+        <FileViewer
+          file={activeFile()!}
           groupId={props.group.id}
         />
       </Show>

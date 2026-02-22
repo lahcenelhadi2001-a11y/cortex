@@ -632,11 +632,31 @@ pub struct EditorStateEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SidebarState {
+    pub visible: bool,
+    pub width: u32,
+    pub active_view: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PanelState {
+    pub visible: bool,
+    pub height: u32,
+    pub active_tab: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkspaceStateData {
     pub open_editors: Vec<EditorStateEntry>,
     pub active_editor: Option<String>,
     pub layout: Option<serde_json::Value>,
     pub scroll_positions: HashMap<String, ScrollPosition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sidebar_state: Option<SidebarState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panel_state: Option<PanelState>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1211,4 +1231,44 @@ pub async fn remove_recent_workspace(app: AppHandle, path: String) -> Result<(),
     }
 
     Ok(())
+}
+
+// ============================================================================
+// Workspace Session Restore by Project Path
+// ============================================================================
+
+fn base64_encode_path(path: &str) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(path.as_bytes())
+}
+
+#[command]
+pub async fn restore_workspace_session(
+    app: AppHandle,
+    project_path: String,
+) -> Result<Option<WorkspaceStateData>, String> {
+    let workspace_id = base64_encode_path(&project_path);
+    let dir = workspace_data_dir(&app)?;
+    let state_path = dir.join(format!("{}.json", workspace_id));
+
+    match tokio::fs::read_to_string(&state_path).await {
+        Ok(content) => {
+            let state: WorkspaceStateData = serde_json::from_str(&content).map_err(|e| {
+                format!(
+                    "Failed to parse workspace session for '{}': {}",
+                    project_path, e
+                )
+            })?;
+            info!("[Workspace] Restored session for: {}", project_path);
+            Ok(Some(state))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            warn!("[Workspace] No saved session for: {}", project_path);
+            Ok(None)
+        }
+        Err(e) => Err(format!(
+            "Failed to read workspace session for '{}': {}",
+            project_path, e
+        )),
+    }
 }

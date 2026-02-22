@@ -193,6 +193,30 @@ export interface WorkspaceTrustState {
 // ============================================================================
 
 /**
+ * Sidebar state for workspace session persistence.
+ */
+export interface SidebarState {
+  /** Whether the sidebar is visible */
+  visible: boolean;
+  /** Sidebar width in pixels */
+  width: number;
+  /** Active sidebar view identifier */
+  activeView: string | null;
+}
+
+/**
+ * Panel state for workspace session persistence.
+ */
+export interface PanelState {
+  /** Whether the panel is visible */
+  visible: boolean;
+  /** Panel height in pixels */
+  height: number;
+  /** Active panel tab identifier */
+  activeTab: string | null;
+}
+
+/**
  * Workspace state data for persistence (matches Rust WorkspaceStateData).
  */
 export interface WorkspaceStateData {
@@ -204,6 +228,10 @@ export interface WorkspaceStateData {
   layout: Record<string, unknown> | null;
   /** Scroll positions keyed by editor URI */
   scrollPositions: Record<string, ScrollPosition>;
+  /** Sidebar layout state */
+  sidebarState?: SidebarState;
+  /** Bottom panel layout state */
+  panelState?: PanelState;
 }
 
 /**

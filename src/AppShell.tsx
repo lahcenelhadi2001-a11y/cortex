@@ -11,8 +11,9 @@
  * which loads lazily after first paint.
  */
 
-import { ParentProps, ErrorBoundary, Suspense, lazy, createSignal, onMount } from "solid-js";
+import { ParentProps, ErrorBoundary, Suspense, lazy, onMount } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import { SplashScreen } from "./components/startup/SplashScreen";
 
 // Startup timing
 const SHELL_LOAD_TIME = performance.now();
@@ -32,58 +33,10 @@ const AppCore = lazy(() => {
 });
 
 // ============================================================================
-// MINIMAL LOADING INDICATOR
+// SPLASH SCREEN (replaces minimal LoadingIndicator)
 // ============================================================================
-// Pure inline styles - no external CSS dependencies
-// Matches the dark theme to avoid flash
-function LoadingIndicator() {
-  const [showSlowWarning, setShowSlowWarning] = createSignal(false);
-  
-  onMount(() => {
-    // Show "loading..." text after 2 seconds if still loading
-    const timer = setTimeout(() => setShowSlowWarning(true), 2000);
-    return () => clearTimeout(timer);
-  });
-
-  return (
-    <div style={{
-      "min-height": "100vh",
-      "min-width": "100vw",
-      background: "#1e1e1e",
-      display: "flex",
-      "flex-direction": "column",
-      "align-items": "center",
-      "justify-content": "center",
-      color: "#888",
-      "font-family": "system-ui, -apple-system, sans-serif",
-    }}>
-      {/* Spinner */}
-      <div style={{
-        width: "32px",
-        height: "32px",
-        border: "3px solid rgba(255,255,255,0.1)",
-        "border-top-color": "#f38518",
-        "border-radius": "50%",
-        animation: "spin 0.8s linear infinite",
-      }} />
-      
-      {/* Loading text - only shows after 2s delay */}
-      {showSlowWarning() && (
-        <div style={{
-          "margin-top": "16px",
-          "font-size": "13px",
-          opacity: "0.6",
-        }}>
-          Loading workspace...
-        </div>
-      )}
-      
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
-    </div>
-  );
-}
+// SplashScreen provides branded loading experience with logo animation,
+// progress bar, and rotating status messages during lazy AppCore load.
 
 // ============================================================================
 // ERROR FALLBACK
@@ -159,7 +112,7 @@ export default function AppShell(props: ParentProps) {
 
   return (
     <ErrorBoundary fallback={(err) => <ErrorFallback error={err} />}>
-      <Suspense fallback={<LoadingIndicator />}>
+      <Suspense fallback={<SplashScreen />}>
         <AppCore {...props}>{props.children}</AppCore>
       </Suspense>
     </ErrorBoundary>

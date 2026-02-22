@@ -42,6 +42,7 @@ macro_rules! workspace_commands {
             $crate::workspace::import_code_workspace,
             $crate::workspace::save_workspace_state,
             $crate::workspace::restore_workspace_state,
+            $crate::workspace::restore_workspace_session,
             $crate::workspace::get_recent_workspaces,
             $crate::workspace::add_recent_workspace,
             $crate::workspace::remove_recent_workspace,
