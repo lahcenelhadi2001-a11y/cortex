@@ -64,7 +64,7 @@ mod wsl;
 
 use std::sync::{Arc, OnceLock};
 
-use tracing::info;
+use tracing::{error, info};
 
 pub use error::CortexError;
 
@@ -102,17 +102,16 @@ impl<T: Clone> Clone for LazyState<T> {
     }
 }
 
-#[allow(clippy::expect_used)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     use tauri::{Manager, WindowEvent};
 
-    tracing_subscriber::fmt()
+    let _ = tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive(tracing::Level::INFO.into()),
         )
-        .init();
+        .try_init();
 
     let _startup_span = tracing::info_span!("startup").entered();
     info!("Starting Cortex Desktop with optimized startup...");
@@ -148,7 +147,7 @@ pub fn run() {
 
     let builder = app::register_state(builder, remote_manager);
 
-    builder
+    let app = match builder
         .invoke_handler(app::cortex_commands!())
         .setup(move |tauri_app| app::setup_app(tauri_app, startup_time))
         .on_window_event(|window, event| {
@@ -159,8 +158,15 @@ pub fn run() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(|app, event| {
-            app::handle_run_event(app, event);
-        });
+    {
+        Ok(app) => app,
+        Err(e) => {
+            error!("Failed to build Tauri application: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    app.run(|app, event| {
+        app::handle_run_event(app, event);
+    });
 }

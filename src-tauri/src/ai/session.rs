@@ -76,26 +76,42 @@ impl std::fmt::Debug for ManagedSession {
 impl SessionManager {
     /// Create a new session manager.
     ///
-    /// # Errors
-    /// Returns an error if storage directories cannot be created.
-    pub fn new() -> Result<Self, String> {
-        let storage = SessionStorage::new()
-            .map_err(|e| format!("Failed to create session storage: {}", e))?;
-        storage
-            .init_sync()
-            .map_err(|e| format!("Failed to initialize session storage: {}", e))?;
-        Ok(Self {
+    /// Gracefully handles storage initialization failures by logging a warning
+    /// and using a fallback temporary directory instead of panicking.
+    pub fn new() -> Self {
+        let storage = match SessionStorage::new() {
+            Ok(s) => match s.init_sync() {
+                Ok(()) => s,
+                Err(e) => {
+                    warn!("Failed to initialize session storage directories: {e}, using fallback");
+                    Self::fallback_storage()
+                }
+            },
+            Err(e) => {
+                warn!("Failed to create session storage: {e}, using fallback");
+                Self::fallback_storage()
+            }
+        };
+        Self {
             sessions: RwLock::new(HashMap::new()),
             storage: Arc::new(storage),
-        })
+        }
     }
 
-    /// Create a new session manager, panicking on failure.
-    ///
-    /// Use this only during application initialization where failure is unrecoverable.
-    #[allow(clippy::expect_used)]
-    pub fn new_or_panic() -> Self {
-        Self::new().expect("Failed to create SessionManager")
+    fn fallback_storage() -> SessionStorage {
+        let tmp = std::env::temp_dir().join("cortex-sessions");
+        match SessionStorage::new_with_base(tmp) {
+            Ok(s) => {
+                if let Err(e) = s.init_sync() {
+                    warn!("Fallback storage init_sync failed: {e}");
+                }
+                s
+            }
+            Err(e) => {
+                warn!("Fallback storage creation failed: {e}, sessions will not persist");
+                SessionStorage::empty()
+            }
+        }
     }
 
     /// Get a reference to the storage.
@@ -536,11 +552,29 @@ impl SessionManager {
         let sessions = self.sessions.read().await;
         sessions.len()
     }
+
+    /// Destroy all active sessions (for cleanup on exit).
+    pub async fn destroy_all(&self) {
+        let mut sessions = self.sessions.write().await;
+        for (id, session) in sessions.drain() {
+            let _ = session
+                .handle
+                .submission_tx
+                .send(Submission {
+                    id: Uuid::new_v4().to_string(),
+                    op: Op::Shutdown,
+                })
+                .await;
+            session.session_task.abort();
+            session.event_task.abort();
+            info!(session_id = %id, "Session destroyed during cleanup");
+        }
+    }
 }
 
 impl Default for SessionManager {
     fn default() -> Self {
-        Self::new_or_panic()
+        Self::new()
     }
 }
 

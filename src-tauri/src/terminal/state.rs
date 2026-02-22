@@ -269,34 +269,16 @@ impl TerminalState {
         let terminal_id_for_log = terminal_id.clone();
         let reader_handle = thread::spawn(move || {
             if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
-            let mut child = child;
-            let mut buf = [0u8; PTY_READ_BUFFER_SIZE];
-            let mut leftover = Vec::new();
-            let mut batcher =
-                OutputBatcher::new(terminal_id_clone.clone(), app_handle_clone.clone())
-                    .with_flow_controller(flow_controller_clone.clone());
+                let mut child = child;
+                let mut buf = [0u8; PTY_READ_BUFFER_SIZE];
+                let mut leftover = Vec::new();
+                let mut batcher =
+                    OutputBatcher::new(terminal_id_clone.clone(), app_handle_clone.clone())
+                        .with_flow_controller(flow_controller_clone.clone());
 
-            loop {
-                // Check if we should stop (lock-free read with Acquire ordering)
-                if !running_clone.load(Ordering::Acquire) {
-                    if !leftover.is_empty() {
-                        let data = String::from_utf8_lossy(&leftover);
-                        batcher.push(&data);
-                    }
-                    batcher.flush();
-                    break;
-                }
-
-                // Check for backpressure - wait if too many pending bytes
-                // Use minimal sleep to avoid blocking TUI apps
-                if flow_controller_clone.should_pause() {
-                    thread::sleep(Duration::from_millis(1));
-                    continue;
-                }
-
-                match reader.read(&mut buf) {
-                    Ok(0) => {
-                        // EOF - process ended
+                loop {
+                    // Check if we should stop (lock-free read with Acquire ordering)
+                    if !running_clone.load(Ordering::Acquire) {
                         if !leftover.is_empty() {
                             let data = String::from_utf8_lossy(&leftover);
                             batcher.push(&data);
@@ -304,71 +286,92 @@ impl TerminalState {
                         batcher.flush();
                         break;
                     }
-                    Ok(n) => {
-                        leftover.extend_from_slice(&buf[..n]);
 
-                        // Process available valid UTF-8
-                        match std::str::from_utf8(&leftover) {
-                            Ok(s) => {
-                                batcher.push(s);
-                                leftover.clear();
-                            }
-                            Err(e) => {
-                                let valid_up_to = e.valid_up_to();
-                                if valid_up_to > 0 {
-                                    let s = std::str::from_utf8(&leftover[..valid_up_to])
-                                        .unwrap_or_default();
-                                    batcher.push(s);
-                                }
-
-                                if let Some(error_len) = e.error_len() {
-                                    // Skip truly invalid sequence
-                                    let s = String::from_utf8_lossy(
-                                        &leftover[valid_up_to..valid_up_to + error_len],
-                                    );
-                                    batcher.push(&s);
-                                    leftover = leftover[valid_up_to + error_len..].to_vec();
-                                } else {
-                                    // Keep incomplete sequence for next read
-                                    leftover = leftover[valid_up_to..].to_vec();
-                                }
-                            }
-                        }
+                    // Check for backpressure - wait if too many pending bytes
+                    // Use minimal sleep to avoid blocking TUI apps
+                    if flow_controller_clone.should_pause() {
+                        thread::sleep(Duration::from_millis(1));
+                        continue;
                     }
-                    Err(e) => {
-                        // Check if it's a would-block error (non-blocking read)
-                        if e.kind() != std::io::ErrorKind::WouldBlock {
-                            error!("Error reading from PTY: {}", e);
+
+                    match reader.read(&mut buf) {
+                        Ok(0) => {
+                            // EOF - process ended
+                            if !leftover.is_empty() {
+                                let data = String::from_utf8_lossy(&leftover);
+                                batcher.push(&data);
+                            }
                             batcher.flush();
                             break;
                         }
-                        // On WouldBlock, flush any pending output and sleep briefly
-                        batcher.flush();
-                        thread::sleep(Duration::from_millis(1));
+                        Ok(n) => {
+                            leftover.extend_from_slice(&buf[..n]);
+
+                            // Process available valid UTF-8
+                            match std::str::from_utf8(&leftover) {
+                                Ok(s) => {
+                                    batcher.push(s);
+                                    leftover.clear();
+                                }
+                                Err(e) => {
+                                    let valid_up_to = e.valid_up_to();
+                                    if valid_up_to > 0 {
+                                        let s = std::str::from_utf8(&leftover[..valid_up_to])
+                                            .unwrap_or_default();
+                                        batcher.push(s);
+                                    }
+
+                                    if let Some(error_len) = e.error_len() {
+                                        // Skip truly invalid sequence
+                                        let s = String::from_utf8_lossy(
+                                            &leftover[valid_up_to..valid_up_to + error_len],
+                                        );
+                                        batcher.push(&s);
+                                        leftover = leftover[valid_up_to + error_len..].to_vec();
+                                    } else {
+                                        // Keep incomplete sequence for next read
+                                        leftover = leftover[valid_up_to..].to_vec();
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            // Check if it's a would-block error (non-blocking read)
+                            if e.kind() != std::io::ErrorKind::WouldBlock {
+                                error!("Error reading from PTY: {}", e);
+                                batcher.flush();
+                                break;
+                            }
+                            // On WouldBlock, flush any pending output and sleep briefly
+                            batcher.flush();
+                            thread::sleep(Duration::from_millis(1));
+                        }
                     }
                 }
-            }
 
-            // Try to get exit status
-            let exit_code = match child.wait() {
-                Ok(status) => status.exit_code() as i32,
-                Err(_) => -1,
-            };
+                // Try to get exit status
+                let exit_code = match child.wait() {
+                    Ok(status) => status.exit_code() as i32,
+                    Err(_) => -1,
+                };
 
-            let status_event = TerminalStatus {
-                terminal_id: terminal_id_clone.clone(),
-                status: "exited".to_string(),
-                exit_code: Some(exit_code),
-            };
+                let status_event = TerminalStatus {
+                    terminal_id: terminal_id_clone.clone(),
+                    status: "exited".to_string(),
+                    exit_code: Some(exit_code),
+                };
 
-            info!(
-                "Terminal {} exited with code: {}",
-                terminal_id_clone, exit_code
-            );
+                info!(
+                    "Terminal {} exited with code: {}",
+                    terminal_id_clone, exit_code
+                );
 
-            let _ = app_handle_clone.emit("terminal:status", &status_event);
+                let _ = app_handle_clone.emit("terminal:status", &status_event);
             })) {
-                error!("Terminal reader thread for '{}' panicked: {:?}", terminal_id_for_log, e);
+                error!(
+                    "Terminal reader thread for '{}' panicked: {:?}",
+                    terminal_id_for_log, e
+                );
             }
         });
 
@@ -506,10 +509,6 @@ impl TerminalState {
                     warn!("Failed to kill terminal process {}: {}", pid, e);
                 }
             }
-
-            // Explicitly drop writer and master to close PTY file descriptors promptly
-            drop(terminal.writer);
-            drop(terminal.master);
 
             // Emit closed event
             let status_event = TerminalStatus {

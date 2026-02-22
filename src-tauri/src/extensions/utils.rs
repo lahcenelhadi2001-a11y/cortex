@@ -60,10 +60,15 @@ pub fn extract_zip_package(
         ));
     }
 
-    let total_size: u64 = (0..archive.len())
-        .filter_map(|i| archive.by_index(i).ok())
-        .map(|f| f.size())
-        .sum();
+    let total_size: u64 = {
+        let mut size = 0u64;
+        for i in 0..archive.len() {
+            if let Ok(f) = archive.by_index(i) {
+                size += f.size();
+            }
+        }
+        size
+    };
     if total_size > MAX_ZIP_TOTAL_SIZE {
         return Err(format!(
             "Zip archive uncompressed size too large ({} bytes, max {} bytes)",

@@ -810,9 +810,39 @@ pub fn handle_run_event(app: &AppHandle, event: RunEvent) {
             }
 
             {
+                let ai_state = app.state::<AIState>();
+                tauri::async_runtime::block_on(async {
+                    ai_state.session_manager.destroy_all().await;
+                });
+                info!("All AI sessions destroyed on app exit");
+            }
+
+            {
                 let watcher_state = app.state::<Arc<crate::fs::FileWatcherState>>();
                 watcher_state.stop_all_watchers();
                 info!("All file watchers stopped on app exit");
+            }
+
+            {
+                let rules_watcher_state = app.state::<crate::rules_library::RulesWatcherState>();
+                rules_watcher_state.close_all();
+                info!("All rules watchers closed on app exit");
+            }
+
+            {
+                let sandbox_state =
+                    app.state::<LazyState<crate::sandbox::commands::SandboxState>>();
+                if sandbox_state.is_initialized() {
+                    sandbox_state.get().kill_all();
+                    info!("All sandboxed processes killed on app exit");
+                }
+            }
+
+            {
+                let port_fwd_state =
+                    app.state::<crate::remote::port_forwarding::PortForwardingState>();
+                port_fwd_state.close_all();
+                info!("All port forwarding tunnels closed on app exit");
             }
 
             {

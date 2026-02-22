@@ -156,6 +156,25 @@ impl SessionStorage {
         })
     }
 
+    pub fn new_with_base(base_dir: PathBuf) -> Result<Self> {
+        let sessions_dir = base_dir.join("sessions");
+        let history_dir = base_dir.join("history");
+        Ok(Self {
+            base_dir,
+            sessions_dir,
+            history_dir,
+        })
+    }
+
+    pub fn empty() -> Self {
+        let base_dir = std::env::temp_dir().join("cortex-sessions-noop");
+        Self {
+            sessions_dir: base_dir.join("sessions"),
+            history_dir: base_dir.join("history"),
+            base_dir,
+        }
+    }
+
     pub fn init_sync(&self) -> Result<()> {
         fs::create_dir_all(&self.sessions_dir)?;
         fs::create_dir_all(&self.history_dir)?;

@@ -286,6 +286,15 @@ impl RulesWatcherState {
             watchers: Mutex::new(HashMap::new()),
         }
     }
+
+    pub fn close_all(&self) {
+        let mut watchers = self.watchers.lock();
+        let count = watchers.len();
+        watchers.clear();
+        if count > 0 {
+            info!("Closed {} rules file watchers", count);
+        }
+    }
 }
 
 impl Default for RulesWatcherState {

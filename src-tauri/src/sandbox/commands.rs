@@ -25,6 +25,26 @@ impl SandboxState {
     pub fn new() -> Self {
         Self(Arc::new(DashMap::new()))
     }
+
+    /// Kill all active sandboxed processes (for cleanup on exit).
+    pub fn kill_all(&self) {
+        let keys: Vec<String> = self.0.iter().map(|e| e.key().clone()).collect();
+        for key in &keys {
+            if let Some(entry) = self.0.get(key) {
+                let mut proc = entry.value().lock();
+                if proc.is_running() {
+                    if let Err(e) = proc.kill() {
+                        error!("Failed to kill sandbox process {}: {}", key, e);
+                    }
+                }
+            }
+        }
+        let count = keys.len();
+        self.0.clear();
+        if count > 0 {
+            info!("Killed {} sandboxed processes", count);
+        }
+    }
 }
 
 /// Request payload for spawning a sandboxed process.

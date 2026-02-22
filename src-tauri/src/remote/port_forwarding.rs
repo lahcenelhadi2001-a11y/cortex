@@ -91,4 +91,14 @@ impl PortForwardingState {
         tunnel.error = error;
         Ok(())
     }
+
+    pub fn close_all(&self) {
+        if let Ok(mut tunnels) = self.tunnels.lock() {
+            let count = tunnels.len();
+            tunnels.clear();
+            if count > 0 {
+                tracing::info!("Closed {} port forwarding tunnels", count);
+            }
+        }
+    }
 }

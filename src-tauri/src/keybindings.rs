@@ -149,6 +149,7 @@ pub async fn get_default_keybindings() -> Result<Vec<KeybindingEntry>, String> {
 /// Import keybindings from a user-specified file path.
 #[tauri::command]
 pub async fn import_keybindings(path: String) -> Result<Vec<KeybindingEntry>, String> {
+    let path_for_error = path.clone();
     tokio::task::spawn_blocking(move || {
         let content = std::fs::read_to_string(&path)
             .map_err(|e| format!("Failed to read keybindings from {}: {}", path, e))?;
@@ -160,7 +161,7 @@ pub async fn import_keybindings(path: String) -> Result<Vec<KeybindingEntry>, St
         Ok(file.bindings)
     })
     .await
-    .map_err(|e| format!("Failed to import keybindings from {path}: {e}"))?
+    .map_err(|e| format!("Failed to import keybindings from {path_for_error}: {e}"))?
 }
 
 /// Export keybindings to a user-specified file path.
@@ -170,6 +171,7 @@ pub async fn export_keybindings(
     bindings: Vec<KeybindingEntry>,
 ) -> Result<(), String> {
     let count = bindings.len();
+    let path_for_error = path.clone();
 
     tokio::task::spawn_blocking(move || {
         if let Some(parent) = std::path::Path::new(&path).parent() {
@@ -192,7 +194,7 @@ pub async fn export_keybindings(
         Ok(())
     })
     .await
-    .map_err(|e| format!("Failed to export keybindings to {path}: {e}"))?
+    .map_err(|e| format!("Failed to export keybindings to {path_for_error}: {e}"))?
 }
 
 /// Detect conflicting keybindings where the same key is mapped to multiple commands.
