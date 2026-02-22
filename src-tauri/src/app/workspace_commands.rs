@@ -132,6 +132,8 @@ macro_rules! workspace_commands {
             $crate::fs::fs_search_content,
             $crate::fs::fs_search_content_streaming,
             $crate::fs::fs_search_content_multiroot,
+            $crate::fs::search_workspace_ripgrep,
+            $crate::fs::replace_in_files,
             $crate::fs::fs_trash,
             $crate::fs::fs_get_file_tree_shallow,
             $crate::fs::fs_prefetch_directory,

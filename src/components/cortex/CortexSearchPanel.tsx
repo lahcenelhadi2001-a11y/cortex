@@ -108,13 +108,15 @@ export const CortexSearchPanel: Component = () => {
     const cur = results();
     if (!cur.length || !replace()) return;
     try {
-      const replacements = cur.flatMap(fr =>
-        fr.matches.map(m => ({
-          file: fr.file, line: m.line, column: m.column,
-          matchStart: m.matchStart, matchEnd: m.matchEnd,
-          text: m.text, replaceWith: replace(),
-        }))
-      );
+      const uniqueFiles = [...new Set(cur.map(fr => fr.file))];
+      const replacements = uniqueFiles.map(file => ({
+        filePath: file,
+        searchText: query(),
+        replaceText: replace(),
+        isRegex: useRegex(),
+        caseSensitive: caseSensitive(),
+        wholeWord: wholeWord(),
+      }));
       await invoke("replace_in_files", { replacements, dryRun: false });
       setResults([]);
     } catch (err) { setError(`Replace failed: ${String(err)}`); }

@@ -112,13 +112,15 @@ export const GlobalSearch: Component = () => {
     const current = results();
     if (!current.length || !replaceQuery()) return;
     try {
-      const replacements = current.flatMap(fileResult =>
-        fileResult.matches.map(m => ({
-          file: fileResult.file, line: m.line, column: m.column,
-          matchStart: m.matchStart, matchEnd: m.matchEnd,
-          text: m.text, replaceWith: replaceQuery(),
-        }))
-      );
+      const uniqueFiles = [...new Set(current.map(fr => fr.file))];
+      const replacements = uniqueFiles.map(file => ({
+        filePath: file,
+        searchText: searchQuery(),
+        replaceText: replaceQuery(),
+        isRegex: useRegex(),
+        caseSensitive: caseSensitive(),
+        wholeWord: wholeWord(),
+      }));
       await invoke("replace_in_files", { replacements, dryRun: false });
       setResults([]);
     } catch (err) { setSearchError(`Replace failed: ${String(err)}`); }
