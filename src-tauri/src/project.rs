@@ -119,8 +119,7 @@ pub async fn get_recent_projects(app: AppHandle) -> Result<Vec<ProjectInfo>, Str
 
     let entries = match tokio::fs::read_to_string(&path).await {
         Ok(content) => {
-            let data: RecentProjectsList =
-                serde_json::from_str(&content).unwrap_or_default();
+            let data: RecentProjectsList = serde_json::from_str(&content).unwrap_or_default();
             data.entries
         }
         Err(_) => Vec::new(),

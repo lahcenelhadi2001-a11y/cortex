@@ -6,8 +6,8 @@
 //! [`crate::context_server::transport::AsyncStdioTransport`].
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, Ordering};
 
 use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
@@ -16,8 +16,8 @@ use tracing::info;
 
 use crate::context_server::transport::AsyncStdioTransport;
 use crate::context_server::types::{
-    CallToolParams, CallToolResponse, InitializeParams, InitializeResponse, ToolsListResponse,
-    LATEST_PROTOCOL_VERSION,
+    CallToolParams, CallToolResponse, InitializeParams, InitializeResponse,
+    LATEST_PROTOCOL_VERSION, ToolsListResponse,
 };
 
 /// JSON-RPC version constant.
@@ -70,7 +70,11 @@ impl McpBridge {
     }
 
     /// Call a tool on the MCP server.
-    pub async fn call_tool(&self, name: &str, arguments: Option<Value>) -> Result<CallToolResponse> {
+    pub async fn call_tool(
+        &self,
+        name: &str,
+        arguments: Option<Value>,
+    ) -> Result<CallToolResponse> {
         let params = CallToolParams {
             name: name.to_string(),
             arguments,
@@ -89,8 +93,8 @@ impl McpBridge {
     /// resource directory or the repo root (for development).
     fn resolve_server_script() -> Result<String> {
         // In development, look relative to the cargo manifest dir
-        let dev_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../mcp-server/dist/index.js");
+        let dev_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../mcp-server/dist/index.js");
         if dev_path.exists() {
             return dev_path
                 .canonicalize()
@@ -121,8 +125,7 @@ impl McpBridge {
             .context("MCP initialize failed")?;
 
         // Send `initialized` notification (no response expected)
-        self.notify::<()>("notifications/initialized", None)
-            .await?;
+        self.notify::<()>("notifications/initialized", None).await?;
 
         info!(
             "[McpBridge] initialized — server: {} v{}",
@@ -171,11 +174,7 @@ impl McpBridge {
     }
 
     /// Send a JSON-RPC notification (fire-and-forget).
-    async fn notify<P: serde::Serialize>(
-        &self,
-        method: &str,
-        params: Option<P>,
-    ) -> Result<()> {
+    async fn notify<P: serde::Serialize>(&self, method: &str, params: Option<P>) -> Result<()> {
         let notification = serde_json::json!({
             "jsonrpc": JSON_RPC_VERSION,
             "method": method,

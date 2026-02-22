@@ -91,9 +91,7 @@ pub async fn mcp_bridge_stop(app: AppHandle<impl Runtime>) -> Result<(), String>
 
 /// List tools exposed by the MCP bridge
 #[tauri::command]
-pub async fn mcp_bridge_list_tools(
-    app: AppHandle<impl Runtime>,
-) -> Result<Value, String> {
+pub async fn mcp_bridge_list_tools(app: AppHandle<impl Runtime>) -> Result<Value, String> {
     let state = app.state::<McpBridgeState>();
     let guard = state.0.lock().await;
     let bridge = guard
