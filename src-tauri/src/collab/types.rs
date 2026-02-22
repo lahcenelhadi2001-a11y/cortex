@@ -93,6 +93,41 @@ impl CollabSession {
     }
 }
 
+/// Server status returned to the frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollabServerStatus {
+    pub running: bool,
+    pub address: Option<String>,
+    pub port: Option<u16>,
+}
+
+/// Server info returned to the frontend (used by `useCollabSync`)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollabServerInfo {
+    pub port: u16,
+    pub running: bool,
+    pub session_count: usize,
+}
+
+/// Lightweight room summary embedded in `CollabRoomResult`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollabRoomSummary {
+    pub id: String,
+    pub name: String,
+    pub host_id: String,
+    pub participant_count: usize,
+    pub created_at: u64,
+}
+
+/// Result returned when creating or joining a session
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollabRoomResult {
+    pub room: CollabRoomSummary,
+    pub user_id: String,
+    pub session_token: String,
+    pub ws_url: String,
+}
+
 /// WebSocket protocol message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]

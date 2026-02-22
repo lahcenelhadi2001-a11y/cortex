@@ -245,6 +245,23 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Initialize a document with content in a session's document store
+    pub async fn init_document(
+        &self,
+        session_id: &str,
+        file_id: &str,
+        content: &str,
+    ) -> Result<(), String> {
+        let store = self
+            .document_stores
+            .get(session_id)
+            .ok_or_else(|| format!("Session '{}' not found", session_id))?;
+
+        let mut inner = store.0.write().await;
+        inner.get_or_create_with_text(file_id, content);
+        Ok(())
+    }
+
     /// Get the document store for a session
     pub fn get_document_store(&self, session_id: &str) -> Option<&SharedDocumentStore> {
         self.document_stores.get(session_id)

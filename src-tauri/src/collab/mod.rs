@@ -18,6 +18,7 @@
 //! └──────────────────────────────────────────────┘
 //! ```
 
+pub mod auth;
 pub mod awareness;
 pub mod commands;
 pub mod crdt;
