@@ -91,6 +91,8 @@ export function VirtualFileTree(props: VirtualFileTreeProps) {
 
   onCleanup(() => {
     if (resizeObserver) resizeObserver.disconnect();
+    if (scrollRaf !== null) cancelAnimationFrame(scrollRaf);
+    fileTreeCache.stopWatching();
   });
 
   createEffect(() => {

@@ -175,6 +175,13 @@ export function FileExplorer(props: FileExplorerProps) {
     }, 50);
   });
 
+  onCleanup(() => {
+    if (folderStatusTimeoutId) {
+      clearTimeout(folderStatusTimeoutId);
+      folderStatusTimeoutId = null;
+    }
+  });
+
   const [showHidden, _setShowHidden] = createSignal(false);
   const [filterQuery, setFilterQuery] = createSignal("");
   const [showSearch, setShowSearch] = createSignal(false);

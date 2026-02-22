@@ -25,6 +25,7 @@ import {
   debounce,
   getGitDecorationForStatus,
   getFolderDecoration,
+  formatFileError,
 } from "./utils";
 import {
   ITEM_HEIGHT,
@@ -492,6 +493,13 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
       localStorage.setItem(storageKey, JSON.stringify([...paths]));
     }, 200);
   });
+
+  onCleanup(() => {
+    if (saveExpandedPathsTimeout) {
+      clearTimeout(saveExpandedPathsTimeout);
+      saveExpandedPathsTimeout = null;
+    }
+  });
   
   createEffect(() => {
     const rootPath = props.rootPath;
@@ -528,22 +536,31 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
       .then(() => setWatchId(newWatchId))
       .catch((err) => console.warn("Failed to watch directory:", err));
 
-    listen<{ watchId: string; paths: string[]; type: string }>("fs:change", (event) => {
+    let listenCancelled = false;
+    const listenPromise = listen<{ watchId: string; paths: string[]; type: string }>("fs:change", (event) => {
       if (event.payload.watchId === newWatchId) {
         debouncedRefresh.call();
       }
-    }).then((fn) => {
-      unlistenFn = fn;
+    });
+
+    listenPromise.then((fn) => {
+      if (listenCancelled) {
+        fn();
+      } else {
+        unlistenFn = fn;
+      }
     }).catch((err) => {
       console.warn("Failed to listen for fs:change events:", err);
     });
 
     onCleanup(() => {
+      listenCancelled = true;
       if (untrack(() => watchId())) {
         invoke("fs_unwatch_directory", { watchId: untrack(() => watchId()), path: rootPath }).catch(console.error);
       }
       if (unlistenFn) {
         unlistenFn();
+        unlistenFn = null;
       }
       debouncedRefresh.cancel();
     });
@@ -563,7 +580,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
             props.onSelectPaths([newPath]);
           } catch (e) {
             console.error("Failed to create file:", e);
-            alert(`Failed to create file: ${e}`);
+            alert(`Failed to create file: ${formatFileError(e)}`);
           }
         }
       }
@@ -581,7 +598,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
             props.onSelectPaths([newPath]);
           } catch (e) {
             console.error("Failed to create folder:", e);
-            alert(`Failed to create folder: ${e}`);
+            alert(`Failed to create folder: ${formatFileError(e)}`);
           }
         }
       }
@@ -832,7 +849,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
       debouncedRefresh.call();
     } catch (e) {
       console.error("Failed to paste:", e);
-      alert(`Failed to paste: ${e}`);
+      alert(`Failed to paste: ${formatFileError(e)}`);
     }
   };
 
@@ -897,7 +914,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
               debouncedRefresh.call();
             } catch (e) {
               console.error("Failed to delete:", e);
-              alert(`Failed to delete: ${e}`);
+              alert(`Failed to delete: ${formatFileError(e)}`);
             }
           }
         }
@@ -915,7 +932,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
               props.onSelectPaths([newPath]);
             } catch (e) {
               console.error("Failed to create file:", e);
-              alert(`Failed to create file: ${e}`);
+              alert(`Failed to create file: ${formatFileError(e)}`);
             }
           }
         }
@@ -933,7 +950,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
               props.onSelectPaths([newPath]);
             } catch (e) {
               console.error("Failed to create folder:", e);
-              alert(`Failed to create folder: ${e}`);
+              alert(`Failed to create folder: ${formatFileError(e)}`);
             }
           }
         }
@@ -1000,7 +1017,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
             debouncedRefresh.call();
           } catch (e) {
             console.error("Failed to duplicate:", e);
-            alert(`Failed to duplicate: ${e}`);
+            alert(`Failed to duplicate: ${formatFileError(e)}`);
           }
         }
         break;
@@ -1028,11 +1045,18 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
       props.onSelectPaths([newPath]);
     } catch (e) {
       console.error("Failed to rename:", e);
-      alert(`Failed to rename: ${e}`);
+      alert(`Failed to rename: ${formatFileError(e)}`);
     }
   };
   
   let autoExpandTimeout: number | null = null;
+
+  onCleanup(() => {
+    if (autoExpandTimeout) {
+      clearTimeout(autoExpandTimeout);
+      autoExpandTimeout = null;
+    }
+  });
 
   const handleDragStart = (e: DragEvent, entry: FileEntry) => {
     const selected = props.selectedPaths;
@@ -1050,7 +1074,11 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
     e.dataTransfer!.setData("application/x-cortex-paths", pathsJson);
     
     try {
-      const fileUrls = pathsToDrag.map(p => `file://${p.replace(/\\/g, '/')}`).join('\n');
+      const fileUrls = pathsToDrag.map(p => {
+        const normalized = p.replace(/\\/g, '/');
+        const encoded = normalized.split('/').map(segment => encodeURIComponent(segment)).join('/');
+        return `file://${encoded}`;
+      }).join('\n');
       e.dataTransfer!.setData("text/uri-list", fileUrls);
     } catch (err) {
       console.warn("Failed to set uri-list data:", err);
@@ -1146,34 +1174,43 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
   };
 
   const executeDropOperation = async (sourcePaths: string[], targetDir: string, isCopy: boolean) => {
-    try {
-      const operationPromises = sourcePaths.map(async (sourcePath) => {
-        const name = getBasename(sourcePath);
-        const initialPath = joinPath(targetDir, name);
-        
-        if (sourcePath === initialPath) return;
-        if (targetDir.startsWith(sourcePath + "/")) return;
-
-        if (isCopy) {
-          const newPath = await fileOps.copyWithUndo(sourcePath, initialPath);
-          return { sourcePath, newPath };
-        } else {
-          const newPath = await generateUniquePath(initialPath);
-          await fileOps.moveWithUndo(sourcePath, newPath);
-          return { sourcePath, newPath };
-        }
-      });
-
-      const results = await Promise.all(operationPromises);
+    const operationPromises = sourcePaths.map(async (sourcePath) => {
+      const name = getBasename(sourcePath);
+      const initialPath = joinPath(targetDir, name);
       
+      if (sourcePath === initialPath) return { status: "skipped" as const };
+      if (targetDir.startsWith(sourcePath + "/")) return { status: "skipped" as const };
+
+      if (isCopy) {
+        const newPath = await fileOps.copyWithUndo(sourcePath, initialPath);
+        return { status: "ok" as const, sourcePath, newPath };
+      } else {
+        const newPath = await generateUniquePath(initialPath);
+        await fileOps.moveWithUndo(sourcePath, newPath);
+        return { status: "ok" as const, sourcePath, newPath };
+      }
+    });
+
+    const settled = await Promise.allSettled(operationPromises);
+
+    const succeeded: Array<{ sourcePath: string; newPath: string }> = [];
+    const failures: string[] = [];
+
+    for (const result of settled) {
+      if (result.status === "fulfilled" && result.value.status === "ok") {
+        succeeded.push(result.value);
+      } else if (result.status === "rejected") {
+        failures.push(formatFileError(result.reason));
+      }
+    }
+
+    if (succeeded.length > 0) {
       batch(() => {
         const affectedDirs = new Set<string>([targetDir]);
         if (!isCopy) {
-          results.forEach(r => {
-            if (r) {
-              const sourceParent = r.sourcePath.replace(/[/\\][^/\\]+$/, "");
-              affectedDirs.add(sourceParent);
-            }
+          succeeded.forEach(r => {
+            const sourceParent = r.sourcePath.replace(/[/\\][^/\\]+$/, "");
+            affectedDirs.add(sourceParent);
           });
         }
 
@@ -1185,13 +1222,18 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
         
         affectedDirs.forEach(dir => loadDirectoryChildren(dir));
       });
-      
-      const newSelected = results.filter(r => r).map(r => r!.newPath);
-      if (newSelected.length > 0) props.onSelectPaths(newSelected);
-      
-    } catch (e) {
-      console.error(`Failed to ${isCopy ? 'copy' : 'move'} files:`, e);
-      alert(`Failed to ${isCopy ? 'copy' : 'move'} files: ${e}`);
+
+      const newSelected = succeeded.map(r => r.newPath);
+      props.onSelectPaths(newSelected);
+    }
+
+    if (failures.length > 0) {
+      const action = isCopy ? "copy" : "move";
+      if (succeeded.length > 0) {
+        alert(`Some files could not be ${action}d:\n${failures.join("\n")}`);
+      } else {
+        alert(`Failed to ${action} files: ${failures.join("\n")}`);
+      }
     }
   };
 
@@ -1316,7 +1358,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
         })
         .catch((err) => {
           console.error("Failed to duplicate:", err);
-          alert(`Failed to duplicate: ${err}`);
+          alert(`Failed to duplicate: ${formatFileError(err)}`);
         });
       return;
     }

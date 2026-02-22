@@ -312,3 +312,47 @@ export function debounce<T extends (...args: unknown[]) => void>(
     }
   };
 }
+
+export function formatFileError(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  const lower = msg.toLowerCase();
+
+  if (lower.includes("permission denied") || lower.includes("access denied") || lower.includes("eperm")) {
+    return `Permission denied. Check that you have the required access rights.`;
+  }
+  if (lower.includes("no such file") || lower.includes("not found") || lower.includes("enoent")) {
+    return `The file or folder no longer exists. It may have been moved or deleted.`;
+  }
+  if (lower.includes("already exists") || lower.includes("eexist")) {
+    return `A file or folder with that name already exists at the destination.`;
+  }
+  if (lower.includes("directory not empty") || lower.includes("enotempty")) {
+    return `The directory is not empty and cannot be removed.`;
+  }
+  if (lower.includes("is a directory") || lower.includes("eisdir")) {
+    return `Expected a file but found a directory.`;
+  }
+  if (lower.includes("not a directory") || lower.includes("enotdir")) {
+    return `Expected a directory but found a file.`;
+  }
+  if (lower.includes("resource busy") || lower.includes("locked") || lower.includes("ebusy")) {
+    return `The file is currently in use by another process. Close it and try again.`;
+  }
+  if (lower.includes("name too long") || lower.includes("enametoolong")) {
+    return `The file or folder name is too long for the file system.`;
+  }
+  if (lower.includes("no space") || lower.includes("enospc")) {
+    return `Not enough disk space to complete the operation.`;
+  }
+  if (lower.includes("read-only") || lower.includes("erofs")) {
+    return `The file system is read-only.`;
+  }
+  if (lower.includes("invalid") || lower.includes("einval")) {
+    return `Invalid file name or path. Avoid special characters like < > : " | ? *`;
+  }
+  if (lower.includes("too many open files") || lower.includes("emfile")) {
+    return `Too many files are open. Close some files and try again.`;
+  }
+
+  return msg;
+}
