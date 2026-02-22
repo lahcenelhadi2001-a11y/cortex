@@ -56,6 +56,7 @@ pub struct LspClient {
     notification_handlers: Arc<Mutex<HashMap<String, NotificationHandler>>>,
     pub(super) process: Arc<Mutex<Option<Child>>>,
     pub(super) diagnostics_tx: Option<mpsc::UnboundedSender<DiagnosticsEvent>>,
+    pub(super) semantic_tokens_legend: Arc<Mutex<Option<SemanticTokensLegend>>>,
 }
 
 impl LspClient {
@@ -110,6 +111,7 @@ impl LspClient {
             notification_handlers: notification_handlers.clone(),
             process: Arc::new(Mutex::new(Some(process))),
             diagnostics_tx,
+            semantic_tokens_legend: Arc::new(Mutex::new(None)),
         };
 
         // Start the writer thread
@@ -401,6 +403,21 @@ impl LspClient {
         // Store capabilities
         let caps = convert_server_capabilities(&result.capabilities);
         *self.capabilities.lock() = Some(caps);
+
+        // Extract and store semantic tokens legend from server capabilities
+        if let Some(ref provider) = result.capabilities.semantic_tokens_provider {
+            let legend = provider.get("legend").and_then(|l| {
+                let token_types = l.get("tokenTypes")?.as_array()?.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect();
+                let token_modifiers = l.get("tokenModifiers")?.as_array()?.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect();
+                Some(SemanticTokensLegend { token_types, token_modifiers })
+            });
+            *self.semantic_tokens_legend.lock() = legend;
+        }
+
         *self.status.lock() = ServerStatus::Running;
 
         // Send initialized notification
@@ -450,6 +467,11 @@ impl LspClient {
     /// Get server capabilities
     pub fn capabilities(&self) -> Option<ServerCapabilities> {
         self.capabilities.lock().clone()
+    }
+
+    /// Get the semantic tokens legend from server capabilities
+    pub fn semantic_tokens_legend(&self) -> Option<SemanticTokensLegend> {
+        self.semantic_tokens_legend.lock().clone()
     }
 
     /// Get server info

@@ -129,6 +129,17 @@ pub(crate) fn convert_completion_item(item: LspCompletionItem) -> CompletionItem
             .map(|edits| edits.into_iter().filter_map(parse_text_edit).collect()),
         sort_text: item.sort_text,
         filter_text: item.filter_text,
+        command: item.command.and_then(|c| {
+            let title = c.get("title")?.as_str()?.to_string();
+            let cmd = c.get("command")?.as_str()?.to_string();
+            let arguments = c.get("arguments").and_then(|a| a.as_array().cloned());
+            Some(Command {
+                title,
+                command: cmd,
+                arguments,
+            })
+        }),
+        data: item.data,
     }
 }
 

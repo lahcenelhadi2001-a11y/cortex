@@ -10,6 +10,9 @@ use crate::lsp::types::{
     TextDocumentPositionParams, TypeDefinitionResult,
 };
 
+/// Declare result (same shape as definition)
+pub type DeclarationResult = DefinitionResult;
+
 use super::state::LspState;
 
 /// Request hover information
@@ -115,4 +118,25 @@ pub async fn lsp_implementation(
         .implementation(params)
         .await
         .map_err(|e| format!("Implementation request failed: {}", e))
+}
+
+/// Request declaration locations
+#[tauri::command]
+pub async fn lsp_declaration(
+    server_id: String,
+    params: TextDocumentPositionParams,
+    state: State<'_, LspState>,
+) -> Result<DeclarationResult, String> {
+    let client = {
+        let clients = state.clients.lock();
+        clients
+            .get(&server_id)
+            .cloned()
+            .ok_or_else(|| format!("Server not found: {}", server_id))?
+    };
+
+    client
+        .declaration(params)
+        .await
+        .map_err(|e| format!("Declaration request failed: {}", e))
 }

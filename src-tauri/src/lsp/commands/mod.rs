@@ -30,6 +30,6 @@ pub use events::setup_lsp_events;
 
 // Re-export types from features module (used by lsp/client/extended_features.rs)
 pub use features::{
-    Color, ColorInformation, ColorPresentation, DocumentHighlight, DocumentLink, FoldingRange,
-    InlayHint, LinkedEditingRanges, SelectionRange,
+    Color, ColorInformation, ColorPresentation, DocumentHighlight, DocumentLink,
+    EvaluatableExpression, FoldingRange, InlayHint, LinkedEditingRanges, SelectionRange,
 };

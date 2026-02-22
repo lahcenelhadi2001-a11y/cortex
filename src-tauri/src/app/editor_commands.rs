@@ -19,12 +19,14 @@ macro_rules! editor_commands {
             $crate::lsp::commands::document::lsp_did_close,
             // LSP commands - completion
             $crate::lsp::commands::completion::lsp_completion,
+            $crate::lsp::commands::completion::lsp_completion_resolve,
             // LSP commands - navigation
             $crate::lsp::commands::navigation::lsp_hover,
             $crate::lsp::commands::navigation::lsp_definition,
             $crate::lsp::commands::navigation::lsp_references,
             $crate::lsp::commands::navigation::lsp_type_definition,
             $crate::lsp::commands::navigation::lsp_implementation,
+            $crate::lsp::commands::navigation::lsp_declaration,
             // LSP commands - actions
             $crate::lsp::commands::actions::lsp_signature_help,
             $crate::lsp::commands::actions::lsp_rename,
@@ -52,6 +54,9 @@ macro_rules! editor_commands {
             $crate::lsp::commands::code_lens::lsp_code_lens_resolve,
             // Semantic Tokens commands
             $crate::lsp::commands::semantic_tokens::lsp_semantic_tokens,
+            $crate::lsp::commands::semantic_tokens::lsp_semantic_tokens_full,
+            $crate::lsp::commands::semantic_tokens::lsp_semantic_tokens_range,
+            $crate::lsp::commands::semantic_tokens::lsp_semantic_tokens_legend,
             $crate::lsp::commands::semantic_tokens::lsp_multi_semantic_tokens,
             // Document highlights commands
             $crate::lsp::commands::features::lsp_document_highlights,
@@ -59,6 +64,9 @@ macro_rules! editor_commands {
             // Document links commands
             $crate::lsp::commands::features::lsp_document_links,
             $crate::lsp::commands::features::lsp_multi_document_links,
+            $crate::lsp::commands::features::lsp_document_link_resolve,
+            // Evaluatable expression commands
+            $crate::lsp::commands::features::lsp_evaluatable_expression,
             // Selection ranges commands
             $crate::lsp::commands::features::lsp_selection_ranges,
             // Document colors commands

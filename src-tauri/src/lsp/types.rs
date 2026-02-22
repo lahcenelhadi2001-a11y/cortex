@@ -152,6 +152,8 @@ pub struct CompletionItem {
     pub additional_text_edits: Option<Vec<TextEdit>>,
     pub sort_text: Option<String>,
     pub filter_text: Option<String>,
+    pub command: Option<Command>,
+    pub data: Option<serde_json::Value>,
 }
 
 /// Text edit operation
@@ -430,7 +432,6 @@ pub struct SemanticTokens {
     /// The actual tokens data (encoded as relative positions)
     pub data: Vec<u32>,
     /// An optional result id for delta requests
-    #[serde(rename = "resultId")]
     pub result_id: Option<String>,
 }
 
@@ -438,16 +439,13 @@ pub struct SemanticTokens {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SemanticTokensResult {
     pub data: Vec<u32>,
-    #[serde(rename = "resultId")]
     pub result_id: Option<String>,
 }
 
 /// Semantic token types legend
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SemanticTokensLegend {
-    #[serde(rename = "tokenTypes")]
     pub token_types: Vec<String>,
-    #[serde(rename = "tokenModifiers")]
     pub token_modifiers: Vec<String>,
 }
 

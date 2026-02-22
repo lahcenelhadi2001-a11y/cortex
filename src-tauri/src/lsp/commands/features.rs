@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tracing::warn;
 
-use crate::lsp::types::{Command, Location, Position, Range, TextEdit};
+use crate::lsp::types::{Command, Location, Position, Range, TextDocumentPositionParams, TextEdit};
 
 use super::state::LspState;
 
@@ -157,6 +157,58 @@ pub async fn lsp_multi_document_links(
     }
 
     Ok(all_links)
+}
+
+/// Resolve a document link (fill in target)
+#[tauri::command]
+pub async fn lsp_document_link_resolve(
+    server_id: String,
+    link: DocumentLink,
+    state: State<'_, LspState>,
+) -> Result<DocumentLink, String> {
+    let client = {
+        let clients = state.clients.lock();
+        clients.get(&server_id).cloned()
+    };
+
+    let client = client.ok_or_else(|| format!("Server not found: {}", server_id))?;
+
+    client
+        .document_link_resolve(link)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ============================================================================
+// Evaluatable Expression - Debug hover support
+// ============================================================================
+
+/// An evaluatable expression result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluatableExpression {
+    pub range: Range,
+    pub expression: Option<String>,
+}
+
+/// Request evaluatable expression at a position
+#[tauri::command]
+pub async fn lsp_evaluatable_expression(
+    server_id: String,
+    params: TextDocumentPositionParams,
+    state: State<'_, LspState>,
+) -> Result<Option<EvaluatableExpression>, String> {
+    let client = {
+        let clients = state.clients.lock();
+        clients.get(&server_id).cloned()
+    };
+
+    let client = client.ok_or_else(|| format!("Server not found: {}", server_id))?;
+
+    let uri = format!("file://{}", params.uri.replace('\\', "/"));
+    client
+        .evaluatable_expression(&uri, params.position)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ============================================================================

@@ -50,6 +50,87 @@ impl LspClient {
         })
     }
 
+    /// Resolve a completion item (get additional details)
+    pub async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
+        let lsp_params = json!({
+            "label": item.label,
+            "kind": item.kind.map(|k| k as u8),
+            "detail": item.detail,
+            "documentation": item.documentation,
+            "insertText": item.insert_text,
+            "insertTextFormat": item.insert_text_format,
+            "textEdit": item.text_edit.as_ref().map(|te| json!({
+                "range": {
+                    "start": { "line": te.range.start.line, "character": te.range.start.character },
+                    "end": { "line": te.range.end.line, "character": te.range.end.character }
+                },
+                "newText": te.new_text
+            })),
+            "additionalTextEdits": item.additional_text_edits.as_ref().map(|edits| {
+                edits.iter().map(|te| json!({
+                    "range": {
+                        "start": { "line": te.range.start.line, "character": te.range.start.character },
+                        "end": { "line": te.range.end.line, "character": te.range.end.character }
+                    },
+                    "newText": te.new_text
+                })).collect::<Vec<_>>()
+            }),
+            "sortText": item.sort_text,
+            "filterText": item.filter_text,
+            "data": item.data
+        });
+
+        let result: Value = self.request("completionItem/resolve", lsp_params).await?;
+
+        if result.is_null() {
+            return Ok(item);
+        }
+
+        let lsp_item: LspCompletionItem = serde_json::from_value(result).unwrap_or_else(|_| {
+            LspCompletionItem {
+                label: item.label.clone(),
+                kind: item.kind.map(|k| k as u8),
+                detail: item.detail.clone(),
+                documentation: item.documentation.as_ref().map(|d| Value::String(d.clone())),
+                insert_text: item.insert_text.clone(),
+                insert_text_format: item.insert_text_format,
+                text_edit: None,
+                additional_text_edits: None,
+                sort_text: item.sort_text.clone(),
+                filter_text: item.filter_text.clone(),
+                command: item.command.as_ref().map(|c| {
+                    json!({
+                        "title": c.title,
+                        "command": c.command,
+                        "arguments": c.arguments
+                    })
+                }),
+                data: item.data.clone(),
+            }
+        });
+
+        Ok(convert_completion_item(lsp_item))
+    }
+
+    /// Request declaration locations
+    pub async fn declaration(&self, params: TextDocumentPositionParams) -> Result<DefinitionResult> {
+        let lsp_params = json!({
+            "textDocument": {
+                "uri": format!("file://{}", params.uri.replace('\\', "/"))
+            },
+            "position": {
+                "line": params.position.line,
+                "character": params.position.character
+            }
+        });
+
+        let result: Value = self.request("textDocument/declaration", lsp_params).await?;
+
+        let locations = parse_location_response(result);
+
+        Ok(DefinitionResult { locations })
+    }
+
     /// Request hover information at a position
     pub async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<HoverInfo>> {
         let lsp_params = json!({
@@ -607,6 +688,47 @@ impl LspClient {
 
         let result: Value = self
             .request("textDocument/semanticTokens/full", lsp_params)
+            .await?;
+
+        if result.is_null() {
+            return Ok(SemanticTokensResult {
+                data: vec![],
+                result_id: None,
+            });
+        }
+
+        let data = result
+            .get("data")
+            .and_then(|d| d.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_u64().map(|n| n as u32))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let result_id = result
+            .get("resultId")
+            .and_then(|r| r.as_str())
+            .map(String::from);
+
+        Ok(SemanticTokensResult { data, result_id })
+    }
+
+    /// Request semantic tokens for a range of a document
+    pub async fn semantic_tokens_range(&self, uri: &str, range: Range) -> Result<SemanticTokensResult> {
+        let lsp_params = json!({
+            "textDocument": {
+                "uri": uri
+            },
+            "range": {
+                "start": { "line": range.start.line, "character": range.start.character },
+                "end": { "line": range.end.line, "character": range.end.character }
+            }
+        });
+
+        let result: Value = self
+            .request("textDocument/semanticTokens/range", lsp_params)
             .await?;
 
         if result.is_null() {

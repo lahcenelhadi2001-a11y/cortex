@@ -90,6 +90,74 @@ impl LspClient {
         Ok(links)
     }
 
+    /// Resolve a document link (fill in target if not present)
+    pub async fn document_link_resolve(&self, link: commands::DocumentLink) -> Result<commands::DocumentLink> {
+        let lsp_params = json!({
+            "range": {
+                "start": { "line": link.range.start.line, "character": link.range.start.character },
+                "end": { "line": link.range.end.line, "character": link.range.end.character }
+            },
+            "target": link.target,
+            "tooltip": link.tooltip,
+            "data": link.data
+        });
+
+        let result: Value = self.request("documentLink/resolve", lsp_params).await?;
+
+        if result.is_null() {
+            return Ok(link);
+        }
+
+        let range = result.get("range").and_then(|r| {
+            let lsp_range: LspRange = serde_json::from_value(r.clone()).ok()?;
+            Some(convert_range(lsp_range))
+        }).unwrap_or(link.range.clone());
+
+        let target = result.get("target").and_then(|t| t.as_str()).map(String::from).or(link.target.clone());
+        let tooltip = result.get("tooltip").and_then(|t| t.as_str()).map(String::from).or(link.tooltip.clone());
+        let data = result.get("data").cloned().or(link.data.clone());
+
+        Ok(commands::DocumentLink {
+            range,
+            target,
+            tooltip,
+            data,
+        })
+    }
+
+    /// Request evaluatable expression at a position (for debug hover)
+    pub async fn evaluatable_expression(
+        &self,
+        uri: &str,
+        position: Position,
+    ) -> Result<Option<commands::EvaluatableExpression>> {
+        let lsp_params = json!({
+            "textDocument": { "uri": uri },
+            "position": { "line": position.line, "character": position.character }
+        });
+
+        let result: Value = self
+            .request("textDocument/evaluatableExpression", lsp_params)
+            .await?;
+
+        if result.is_null() {
+            return Ok(None);
+        }
+
+        let range = result.get("range").and_then(|r| {
+            let lsp_range: LspRange = serde_json::from_value(r.clone()).ok()?;
+            Some(convert_range(lsp_range))
+        });
+
+        match range {
+            Some(range) => {
+                let expression = result.get("expression").and_then(|e| e.as_str()).map(String::from);
+                Ok(Some(commands::EvaluatableExpression { range, expression }))
+            }
+            None => Ok(None),
+        }
+    }
+
     /// Request selection ranges (smart selection)
     pub async fn selection_ranges(
         &self,

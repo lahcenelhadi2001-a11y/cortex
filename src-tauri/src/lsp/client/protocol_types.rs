@@ -86,6 +86,10 @@ pub(crate) struct LspServerCapabilities {
     pub code_action_provider: Option<Value>,
     #[serde(rename = "signatureHelpProvider")]
     pub signature_help_provider: Option<Value>,
+    #[serde(rename = "declarationProvider")]
+    pub declaration_provider: Option<Value>,
+    #[serde(rename = "semanticTokensProvider")]
+    pub semantic_tokens_provider: Option<Value>,
 }
 
 /// Parameters for publishDiagnostics notification
@@ -154,4 +158,6 @@ pub(crate) struct LspCompletionItem {
     pub sort_text: Option<String>,
     #[serde(rename = "filterText")]
     pub filter_text: Option<String>,
+    pub command: Option<Value>,
+    pub data: Option<Value>,
 }
