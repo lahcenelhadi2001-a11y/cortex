@@ -5,6 +5,7 @@ import { Icon } from "./ui/Icon";
 import "@/styles/quickinput.css";
 import { fsGetFileTree, lspDocumentSymbols, type LspSymbol } from "../utils/tauri-api";
 import { getProjectPath } from "../utils/workspace";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 interface FileEntry {
   name: string;
@@ -164,7 +165,7 @@ const MAX_RECENT_FILES = 50;
 
 function getRecentFiles(): string[] {
   try {
-    const stored = localStorage.getItem(RECENT_FILES_KEY);
+    const stored = safeGetItem(RECENT_FILES_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
@@ -177,7 +178,7 @@ function addRecentFile(path: string) {
   if (recent.length > MAX_RECENT_FILES) {
     recent.length = MAX_RECENT_FILES;
   }
-  localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(recent));
+  safeSetItem(RECENT_FILES_KEY, JSON.stringify(recent));
 }
 
 // Advanced fuzzy matching algorithm inspired by Zed's implementation

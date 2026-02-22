@@ -8,6 +8,7 @@ import { useCommands } from "@/context/CommandContext";
 import { useTerminals } from "@/context/TerminalsContext";
 import { useREPL } from "@/context/REPLContext";
 import { useRecentProjects, type RecentProject } from "@/context/RecentProjectsContext";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 import { useAutoUpdate } from "@/context/AutoUpdateContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { useSDK } from "@/context/SDKContext";
@@ -161,12 +162,12 @@ export function MenuBar(_props: MenuBarProps = {}) {
   const [showRecentWorkspacesModal, setShowRecentWorkspacesModal] = createSignal(false);
   const [focusedItemIndex, setFocusedItemIndex] = createSignal<number>(-1);
   const [viewMode, setViewModeSignal] = createSignal<ViewMode>(
-    (localStorage.getItem(VIEW_MODE_KEY) as ViewMode) || "vibe"
+    (safeGetItem(VIEW_MODE_KEY) as ViewMode) || "vibe"
   );
   
   const setViewMode = (mode: ViewMode) => {
     setViewModeSignal(mode);
-    localStorage.setItem(VIEW_MODE_KEY, mode);
+    safeSetItem(VIEW_MODE_KEY, mode);
     // Dispatch event so other components can react
     window.dispatchEvent(new CustomEvent("viewmode:change", { detail: { mode } }));
   };

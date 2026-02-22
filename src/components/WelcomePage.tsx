@@ -4,6 +4,7 @@ import { useCommands } from "@/context/CommandContext";
 import { CortexPromptInput } from "@/components/cortex/primitives/CortexInput";
 import { CortexOpenProjectDropdown } from "@/components/cortex/primitives/CortexOpenProjectDropdown";
 import { WelcomeRecentFiles } from "@/components/cortex/WelcomeRecentFiles";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 const STORAGE_KEYS = {
   showOnStartup: "welcome_show_on_startup",
@@ -22,13 +23,13 @@ export function WelcomePage(props: WelcomePageProps) {
 
   const [isVisible, setIsVisible] = createSignal(true);
   const [showOnStartup, setShowOnStartup] = createSignal(
-    localStorage.getItem(STORAGE_KEYS.showOnStartup) !== "false"
+    safeGetItem(STORAGE_KEYS.showOnStartup) !== "false"
   );
   const [promptValue, setPromptValue] = createSignal("");
   const [dropdownOpen, setDropdownOpen] = createSignal(false);
 
   createEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.showOnStartup, showOnStartup().toString());
+    safeSetItem(STORAGE_KEYS.showOnStartup, showOnStartup().toString());
   });
 
   onMount(() => {
@@ -270,11 +271,11 @@ function DropdownItem(props: { label: string; icon: string; onClick: () => void 
 }
 
 export function shouldShowWelcomeOnStartup(): boolean {
-  return localStorage.getItem(STORAGE_KEYS.showOnStartup) !== "false";
+  return safeGetItem(STORAGE_KEYS.showOnStartup) !== "false";
 }
 
 export function setShowWelcomeOnStartup(show: boolean): void {
-  localStorage.setItem(STORAGE_KEYS.showOnStartup, show.toString());
+  safeSetItem(STORAGE_KEYS.showOnStartup, show.toString());
 }
 
 export function showWelcomePage(): void {

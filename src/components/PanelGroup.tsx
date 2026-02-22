@@ -11,6 +11,7 @@ import {
 import { ResizeHandle, ResizeDirection } from "./ResizeHandle";
 import { IconButton, Text } from "@/components/ui";
 import { Icon } from "./ui/Icon";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 // ============================================================================
 // Panel Component
@@ -235,7 +236,7 @@ export function ResizablePanel(props: ResizablePanelProps) {
   // Load saved size from localStorage
   const getSavedSize = () => {
     if (props.storageKey) {
-      const saved = localStorage.getItem(`panel_size_${props.storageKey}`);
+      const saved = safeGetItem(`panel_size_${props.storageKey}`);
       if (saved) {
         const parsed = parseFloat(saved);
         if (!isNaN(parsed)) return parsed;
@@ -246,7 +247,7 @@ export function ResizablePanel(props: ResizablePanelProps) {
 
   const getSavedCollapsed = () => {
     if (props.storageKey) {
-      const saved = localStorage.getItem(`panel_collapsed_${props.storageKey}`);
+      const saved = safeGetItem(`panel_collapsed_${props.storageKey}`);
       if (saved !== null) return saved === "true";
     }
     return props.defaultCollapsed ?? false;
@@ -259,13 +260,13 @@ export function ResizablePanel(props: ResizablePanelProps) {
   // Save size to localStorage
   createEffect(() => {
     if (props.storageKey && !collapsed()) {
-      localStorage.setItem(`panel_size_${props.storageKey}`, size().toString());
+      safeSetItem(`panel_size_${props.storageKey}`, size().toString());
     }
   });
 
   createEffect(() => {
     if (props.storageKey) {
-      localStorage.setItem(`panel_collapsed_${props.storageKey}`, collapsed().toString());
+      safeSetItem(`panel_collapsed_${props.storageKey}`, collapsed().toString());
     }
   });
 
@@ -369,7 +370,7 @@ export function CollapsiblePanel(props: CollapsiblePanelProps) {
   // Load/save size from localStorage
   const getSavedSize = () => {
     if (props.storageKey) {
-      const saved = localStorage.getItem(`panel_size_${props.storageKey}`);
+      const saved = safeGetItem(`panel_size_${props.storageKey}`);
       if (saved) {
         const parsed = parseFloat(saved);
         if (!isNaN(parsed)) return parsed;
@@ -382,7 +383,7 @@ export function CollapsiblePanel(props: CollapsiblePanelProps) {
 
   createEffect(() => {
     if (props.storageKey && !props.collapsed) {
-      localStorage.setItem(`panel_size_${props.storageKey}`, size().toString());
+      safeSetItem(`panel_size_${props.storageKey}`, size().toString());
     }
   });
 
@@ -564,7 +565,7 @@ export interface SplitPanelProps extends ParentProps {
 export function SplitPanel(props: SplitPanelProps) {
   const getSavedRatio = () => {
     if (props.storageKey) {
-      const saved = localStorage.getItem(`split_ratio_${props.storageKey}`);
+      const saved = safeGetItem(`split_ratio_${props.storageKey}`);
       if (saved) {
         const parsed = parseFloat(saved);
         if (!isNaN(parsed)) return parsed;
@@ -579,7 +580,7 @@ export function SplitPanel(props: SplitPanelProps) {
 
   createEffect(() => {
     if (props.storageKey) {
-      localStorage.setItem(`split_ratio_${props.storageKey}`, ratio().toString());
+      safeSetItem(`split_ratio_${props.storageKey}`, ratio().toString());
     }
   });
 

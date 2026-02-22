@@ -16,6 +16,7 @@ import { fsDeleteFile, fsDeleteDirectory } from "@/utils/tauri-api";
 import { type ExplorerRevealPayload, addAppEventListener } from "@/utils/eventBus";
 import { getFileIconSvg } from "./icons";
 import { tokens } from "@/design-system/tokens";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 import {
   sortEntries,
   filterEntries,
@@ -413,7 +414,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
 
   onMount(async () => {
     const storageKey = `file_explorer_expanded_${hashString(props.rootPath)}`;
-    const stored = localStorage.getItem(storageKey);
+    const stored = safeGetItem(storageKey);
     let restoredPaths: string[] = [];
     if (stored) {
       try {
@@ -490,7 +491,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
       clearTimeout(saveExpandedPathsTimeout);
     }
     saveExpandedPathsTimeout = setTimeout(() => {
-      localStorage.setItem(storageKey, JSON.stringify([...paths]));
+      safeSetItem(storageKey, JSON.stringify([...paths]));
     }, 200);
   });
 

@@ -1,6 +1,7 @@
 import { Component, JSX, createSignal, onMount } from "solid-js";
 import { CortexToggle, CortexIcon } from "@/components/cortex/primitives";
 import { updateLinkedEditingEnabled } from "./modules/EditorLSP";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 export interface LinkedEditingToggleProps {
   class?: string;
@@ -13,7 +14,7 @@ export const LinkedEditingToggle: Component<LinkedEditingToggleProps> = (props) 
   const [enabled, setEnabled] = createSignal(props.initialEnabled ?? true);
 
   onMount(() => {
-    const stored = localStorage.getItem("cortex.editor.linkedEditing");
+    const stored = safeGetItem("cortex.editor.linkedEditing");
     if (stored !== null) {
       const val = stored === "true";
       setEnabled(val);
@@ -24,7 +25,7 @@ export const LinkedEditingToggle: Component<LinkedEditingToggleProps> = (props) 
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
     updateLinkedEditingEnabled(checked);
-    localStorage.setItem("cortex.editor.linkedEditing", String(checked));
+    safeSetItem("cortex.editor.linkedEditing", String(checked));
     props.onChange?.(checked);
   };
 

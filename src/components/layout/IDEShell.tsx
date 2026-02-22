@@ -3,6 +3,7 @@ import { TitleBar } from "./TitleBar";
 import { ActivityBar } from "./ActivityBar";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 500;
@@ -11,7 +12,7 @@ const STORAGE_KEY_WIDTH = "ide_shell_sidebar_width";
 const STORAGE_KEY_VIEW = "ide_shell_active_view";
 
 function loadSidebarWidth(): number {
-  const saved = localStorage.getItem(STORAGE_KEY_WIDTH);
+  const saved = safeGetItem(STORAGE_KEY_WIDTH);
   if (saved) {
     const parsed = parseInt(saved, 10);
     if (!isNaN(parsed)) return Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, parsed));
@@ -20,7 +21,7 @@ function loadSidebarWidth(): number {
 }
 
 function loadActiveView(): string | null {
-  return localStorage.getItem(STORAGE_KEY_VIEW) || "explorer";
+  return safeGetItem(STORAGE_KEY_VIEW) || "explorer";
 }
 
 export interface IDEShellProps {
@@ -42,10 +43,10 @@ export const IDEShell: Component<IDEShellProps> = (props) => {
   const handleViewSelect = (viewId: string) => {
     if (activeView() === viewId) {
       setActiveView(null);
-      localStorage.setItem(STORAGE_KEY_VIEW, "");
+      safeSetItem(STORAGE_KEY_VIEW, "");
     } else {
       setActiveView(viewId);
-      localStorage.setItem(STORAGE_KEY_VIEW, viewId);
+      safeSetItem(STORAGE_KEY_VIEW, viewId);
     }
   };
 
@@ -63,7 +64,7 @@ export const IDEShell: Component<IDEShellProps> = (props) => {
 
     const onMouseUp = () => {
       setIsResizing(false);
-      localStorage.setItem(STORAGE_KEY_WIDTH, sidebarWidth().toString());
+      safeSetItem(STORAGE_KEY_WIDTH, sidebarWidth().toString());
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
       document.body.style.cursor = "";

@@ -19,6 +19,7 @@ import {
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { getWindowLabel } from "@/utils/windowStorage";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 import CortexTitleBar from "./CortexTitleBar";
 import { WindowResizers } from "./titlebar/WindowResizers";
@@ -67,32 +68,32 @@ const VALID_SIDEBAR_TABS: SidebarTab[] = ["files", "search", "git", "debug", "ex
 const VALID_CHAT_STATES: ChatPanelState[] = ["minimized", "expanded", "home"];
 
 function loadLayoutState() {
-  const rawMode = localStorage.getItem(STORAGE_KEYS.mode);
-  const rawTab = localStorage.getItem(STORAGE_KEYS.sidebarTab);
-  const rawWidth = parseInt(localStorage.getItem(STORAGE_KEYS.sidebarWidth) || String(SIDEBAR_DEFAULT_WIDTH), 10);
-  const rawChat = localStorage.getItem(STORAGE_KEYS.chatState);
+  const rawMode = safeGetItem(STORAGE_KEYS.mode);
+  const rawTab = safeGetItem(STORAGE_KEYS.sidebarTab);
+  const rawWidth = parseInt(safeGetItem(STORAGE_KEYS.sidebarWidth) || String(SIDEBAR_DEFAULT_WIDTH), 10);
+  const rawChat = safeGetItem(STORAGE_KEYS.chatState);
 
   const label = getWindowLabel();
-  const currentProject = localStorage.getItem(`cortex_current_project_${label}`)
-    || (label === "main" ? localStorage.getItem("cortex_current_project") : null);
+  const currentProject = safeGetItem(`cortex_current_project_${label}`)
+    || (label === "main" ? safeGetItem("cortex_current_project") : null);
   const hasProject = currentProject && currentProject !== "." && currentProject !== "";
 
   return {
     mode: hasProject ? "ide" as ViewMode
       : (VALID_MODES.includes(rawMode as ViewMode) ? (rawMode as ViewMode) : "vibe" as ViewMode),
     sidebarTab: VALID_SIDEBAR_TABS.includes(rawTab as SidebarTab) ? (rawTab as SidebarTab) : "files" as SidebarTab,
-    sidebarCollapsed: localStorage.getItem(STORAGE_KEYS.sidebarCollapsed) === "true",
+    sidebarCollapsed: safeGetItem(STORAGE_KEYS.sidebarCollapsed) === "true",
     sidebarWidth: Number.isFinite(rawWidth) ? Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, rawWidth)) : SIDEBAR_DEFAULT_WIDTH,
     chatState: VALID_CHAT_STATES.includes(rawChat as ChatPanelState) ? (rawChat as ChatPanelState) : "minimized" as ChatPanelState,
   };
 }
 
 function saveLayoutState(state: { mode?: ViewMode; sidebarTab?: SidebarTab; sidebarCollapsed?: boolean; sidebarWidth?: number; chatState?: ChatPanelState }) {
-  if (state.mode !== undefined) localStorage.setItem(STORAGE_KEYS.mode, state.mode);
-  if (state.sidebarTab !== undefined) localStorage.setItem(STORAGE_KEYS.sidebarTab, state.sidebarTab);
-  if (state.sidebarCollapsed !== undefined) localStorage.setItem(STORAGE_KEYS.sidebarCollapsed, String(state.sidebarCollapsed));
-  if (state.sidebarWidth !== undefined) localStorage.setItem(STORAGE_KEYS.sidebarWidth, String(state.sidebarWidth));
-  if (state.chatState !== undefined) localStorage.setItem(STORAGE_KEYS.chatState, state.chatState);
+  if (state.mode !== undefined) safeSetItem(STORAGE_KEYS.mode, state.mode);
+  if (state.sidebarTab !== undefined) safeSetItem(STORAGE_KEYS.sidebarTab, state.sidebarTab);
+  if (state.sidebarCollapsed !== undefined) safeSetItem(STORAGE_KEYS.sidebarCollapsed, String(state.sidebarCollapsed));
+  if (state.sidebarWidth !== undefined) safeSetItem(STORAGE_KEYS.sidebarWidth, String(state.sidebarWidth));
+  if (state.chatState !== undefined) safeSetItem(STORAGE_KEYS.chatState, state.chatState);
 }
 
 export function CortexDesktopLayout(props: ParentProps) {
@@ -174,8 +175,8 @@ export function CortexDesktopLayout(props: ParentProps) {
     const cwd = sdk.state.config.cwd;
     if (cwd && cwd !== ".") return cwd;
     const label = getWindowLabel();
-    const stored = localStorage.getItem(`cortex_current_project_${label}`)
-      || (label === "main" ? localStorage.getItem("cortex_current_project") : null);
+    const stored = safeGetItem(`cortex_current_project_${label}`)
+      || (label === "main" ? safeGetItem("cortex_current_project") : null);
     if (stored && stored !== "." && stored !== "") return stored;
     return null;
   });

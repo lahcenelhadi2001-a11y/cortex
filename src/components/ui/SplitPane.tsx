@@ -1,4 +1,5 @@
 import { JSX, splitProps, createSignal, createEffect, onMount, onCleanup } from "solid-js";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 
 export interface SplitPaneProps {
   id?: string;
@@ -29,7 +30,7 @@ export function SplitPane(props: SplitPaneProps) {
 
   const getSavedRatio = () => {
     if (local.storageKey) {
-      const saved = localStorage.getItem(`split_ratio_${local.storageKey}`);
+      const saved = safeGetItem(`split_ratio_${local.storageKey}`);
       if (saved) {
         const parsed = parseFloat(saved);
         if (!isNaN(parsed)) return parsed;
@@ -44,7 +45,7 @@ export function SplitPane(props: SplitPaneProps) {
 
   createEffect(() => {
     if (local.storageKey) {
-      localStorage.setItem(`split_ratio_${local.storageKey}`, ratio().toString());
+      safeSetItem(`split_ratio_${local.storageKey}`, ratio().toString());
     }
   });
 

@@ -9,6 +9,7 @@ import { useSDK } from "@/context/SDKContext";
 import { fsWriteFile } from "@/utils/tauri-api";
 import { createLogger } from "@/utils/logger";
 import { getWindowLabel } from "@/utils/windowStorage";
+import { safeSetItem } from "@/utils/safeStorage";
 
 const logger = createLogger("FileEditHandlers");
 
@@ -104,10 +105,10 @@ export function FileEditHandlers() {
             sdk.updateConfig({ cwd: path });
 
             const label = getWindowLabel();
-            localStorage.setItem("cortex_current_project_" + label, path);
-            if (label === "main") localStorage.setItem("cortex_current_project", path);
+            safeSetItem("cortex_current_project_" + label, path);
+            if (label === "main") safeSetItem("cortex_current_project", path);
 
-            localStorage.setItem("figma_layout_mode", "ide");
+            safeSetItem("figma_layout_mode", "ide");
 
             window.dispatchEvent(new CustomEvent("workspace:open-folder", { detail: { path } }));
             window.dispatchEvent(new CustomEvent("folder:did-open"));

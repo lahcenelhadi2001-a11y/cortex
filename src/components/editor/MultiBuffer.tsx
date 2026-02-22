@@ -6,6 +6,7 @@ import { TabBar } from "./TabBar";
 import { ImageViewer, isImageFile, SVGPreview, isSVGFile } from "../viewers";
 import { Icon } from "../ui/Icon";
 import { Card, Text } from "@/components/ui";
+import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
 import "@/styles/animations.css";
 
 // Lazy load DiffEditor for better performance - only loaded when needed
@@ -343,7 +344,7 @@ function SplitContainer(props: SplitContainerProps) {
     
     // Save to localStorage
     if (props.storageKey) {
-      localStorage.setItem(props.storageKey, newRatio.toString());
+      safeSetItem(props.storageKey, newRatio.toString());
     }
   };
 
@@ -355,7 +356,7 @@ function SplitContainer(props: SplitContainerProps) {
     // Reset to 50%
     props.onRatioChange(0.5);
     if (props.storageKey) {
-      localStorage.setItem(props.storageKey, "0.5");
+      safeSetItem(props.storageKey, "0.5");
     }
   };
 
@@ -575,7 +576,7 @@ export function MultiBuffer() {
   
   // Load saved split ratio or default to 0.5
   const getSavedRatio = () => {
-    const saved = localStorage.getItem(STORAGE_KEYS.splitRatio);
+    const saved = safeGetItem(STORAGE_KEYS.splitRatio);
     if (saved) {
       const parsed = parseFloat(saved);
       if (!isNaN(parsed)) return parsed;

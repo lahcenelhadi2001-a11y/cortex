@@ -22,6 +22,7 @@ import { AgentActivityFeed } from "./AgentActivityFeed";
 import { AgentSkeleton } from "../ui/AgentSkeleton";
 import { Button, IconButton, Card, ListItem, Badge, Text, LoadingSpinner } from "@/components/ui";
 import { tokens } from "@/design-system/tokens";
+import { safeGetItem, safeSetItem, safeRemoveItem } from "@/utils/safeStorage";
 import { loadStylesheet } from "@/utils/lazyStyles";
 loadStylesheet("agent-panel");
 
@@ -1478,7 +1479,7 @@ export function AgentPanel() {
 
   // Load persisted data
   onMount(() => {
-    const storedThreads = localStorage.getItem(STORAGE_KEY_THREADS);
+    const storedThreads = safeGetItem(STORAGE_KEY_THREADS);
     if (storedThreads) {
       try {
         setThreads(JSON.parse(storedThreads));
@@ -1487,7 +1488,7 @@ export function AgentPanel() {
       }
     }
 
-    const storedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
+    const storedActive = safeGetItem(STORAGE_KEY_ACTIVE);
     if (storedActive) {
       setActiveThreadId(storedActive);
       loadThreadMessages(storedActive);
@@ -1506,11 +1507,7 @@ export function AgentPanel() {
 
   // Debounced thread persistence to avoid expensive JSON.stringify on every change
   const persistThreadsDebounced = debounce((threadsToSave: Thread[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(threadsToSave));
-    } catch (e) {
-      console.error("Failed to persist threads:", e);
-    }
+    safeSetItem(STORAGE_KEY_THREADS, JSON.stringify(threadsToSave));
   }, 1000); // 1 second debounce
 
   // Persist threads with debounce
@@ -1530,9 +1527,9 @@ export function AgentPanel() {
   createEffect(() => {
     const active = activeThreadId();
     if (active) {
-      localStorage.setItem(STORAGE_KEY_ACTIVE, active);
+      safeSetItem(STORAGE_KEY_ACTIVE, active);
     } else {
-      localStorage.removeItem(STORAGE_KEY_ACTIVE);
+      safeRemoveItem(STORAGE_KEY_ACTIVE);
     }
   });
 
@@ -1617,7 +1614,7 @@ export function AgentPanel() {
 
   const loadThreadMessages = (threadId: string) => {
     const key = `cortex_agent_thread_${threadId}`;
-    const stored = localStorage.getItem(key);
+    const stored = safeGetItem(key);
     if (stored) {
       try {
         setMessages(JSON.parse(stored));
@@ -1631,7 +1628,7 @@ export function AgentPanel() {
 
   const saveThreadMessages = (threadId: string, msgs: AgentMessage[]) => {
     const key = `cortex_agent_thread_${threadId}`;
-    localStorage.setItem(key, JSON.stringify(msgs));
+    safeSetItem(key, JSON.stringify(msgs));
   };
 
   const handleNewThread = () => {
@@ -1671,7 +1668,7 @@ export function AgentPanel() {
     });
 
     // Clean up stored messages
-    localStorage.removeItem(`cortex_agent_thread_${id}`);
+    safeRemoveItem(`cortex_agent_thread_${id}`);
   };
 
   const handleSendMessage = async (content: string, attachments?: File[]) => {

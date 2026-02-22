@@ -6,6 +6,8 @@
  * historically (projectPath and cortex_current_project).
  */
 
+import { safeGetItem, safeSetItem, safeRemoveItem } from "./safeStorage";
+
 const PROJECT_PATH_KEY = "projectPath";
 const cortex_PROJECT_KEY = "cortex_current_project";
 
@@ -17,8 +19,8 @@ const cortex_PROJECT_KEY = "cortex_current_project";
  */
 export function getProjectPath(): string {
   return (
-    localStorage.getItem(PROJECT_PATH_KEY) ||
-    localStorage.getItem(cortex_PROJECT_KEY) ||
+    safeGetItem(PROJECT_PATH_KEY) ||
+    safeGetItem(cortex_PROJECT_KEY) ||
     ""
   );
 }
@@ -30,8 +32,8 @@ export function getProjectPath(): string {
  * @param path - The project path to set
  */
 export function setProjectPath(path: string): void {
-  localStorage.setItem(PROJECT_PATH_KEY, path);
-  localStorage.setItem(cortex_PROJECT_KEY, path);
+  safeSetItem(PROJECT_PATH_KEY, path);
+  safeSetItem(cortex_PROJECT_KEY, path);
 }
 
 /**
@@ -39,6 +41,6 @@ export function setProjectPath(path: string): void {
  * Removes both keys for full cleanup.
  */
 export function clearProjectPath(): void {
-  localStorage.removeItem(PROJECT_PATH_KEY);
-  localStorage.removeItem(cortex_PROJECT_KEY);
+  safeRemoveItem(PROJECT_PATH_KEY);
+  safeRemoveItem(cortex_PROJECT_KEY);
 }
