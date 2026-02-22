@@ -85,6 +85,7 @@ export const CortexSourceControl: Component = () => {
   const [sections, setSections] = createSignal<Set<string>>(new Set(["staged", "changes"]));
   const [showCommits, setShowCommits] = createSignal(false);
   const [commits, setCommits] = createSignal<GitCommit[]>([]);
+  const [error, setError] = createSignal<string | null>(null);
 
   const repo = () => multiRepo?.activeRepository() ?? null;
   const staged = () => repo()?.stagedFiles ?? [];
@@ -97,7 +98,7 @@ export const CortexSourceControl: Component = () => {
 
   const fetchCommits = async () => {
     const r = repo(); if (!r) return;
-    try { setCommits(await gitLog(r.path, 5)); } catch { setCommits([]); }
+    try { setCommits(await gitLog(r.path, 5)); } catch (err) { setCommits([]); setError(`Failed to load commits: ${err}`); }
   };
 
   onMount(() => { if (repo()) fetchCommits(); });
@@ -129,6 +130,13 @@ export const CortexSourceControl: Component = () => {
           </div>
         </div>
       }>
+        <Show when={error()}>
+          <div style={{ display: "flex", "align-items": "center", gap: "8px", padding: "8px 16px", background: "rgba(239,68,68,0.1)", color: "#ef4444", "font-size": "12px" }}>
+            <span style={{ flex: 1, overflow: "hidden", "text-overflow": "ellipsis", "white-space": "nowrap" }}>{error()}</span>
+            <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", padding: "2px", "font-size": "12px" }}>✕</button>
+          </div>
+        </Show>
+
         <div style={{ display: "flex", "align-items": "center", "justify-content": "space-between", padding: "12px 16px", "border-bottom": "1px solid var(--cortex-bg-hover)" }}>
           <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
             <span style={{ "font-weight": "500" }}>Source Control</span>

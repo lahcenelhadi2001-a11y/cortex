@@ -57,6 +57,7 @@ export function DiffView(props: DiffViewProps) {
 
   const [diff, setDiff] = createSignal<FileDiff | null>(null);
   const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
   const [viewMode, setViewMode] = createSignal<"unified" | "split">("unified");
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
@@ -111,12 +112,17 @@ export function DiffView(props: DiffViewProps) {
 
   const fetchDiff = async (file: string, staged: boolean) => {
     setLoading(true);
+    setError(null);
     try {
       const diffText = await gitDiff(getProjectPath(), file, staged);
       const rawDiff: RawFileDiff = { path: file, content: diffText, hunks: [], additions: 0, deletions: 0 };
       setDiff(rawDiff);
-    } catch (err) { console.error("Failed to fetch diff:", err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error("Failed to fetch diff:", err);
+      setError(`Failed to load diff: ${err}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleHunkAction = async (
@@ -260,6 +266,18 @@ export function DiffView(props: DiffViewProps) {
         onCopyDiff={copyDiff} onEnterEditMode={handleEnterEditMode}
         onSaveEdit={handleSaveEdit} onCancelEdit={handleCancelEdit} onClose={props.onClose}
       />
+      <Show when={error()}>
+        <div
+          class="flex items-center gap-2 px-3 py-2 text-sm"
+          style={{ background: "var(--status-error-bg, rgba(239,68,68,0.1))", color: "var(--status-error, #ef4444)" }}
+        >
+          <Icon name="circle-exclamation" class="w-4 h-4 shrink-0" />
+          <span class="flex-1 truncate">{error()}</span>
+          <button class="p-0.5 rounded hover:bg-white/10" onClick={() => setError(null)}>
+            <Icon name="xmark" class="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </Show>
       <Show when={editMode()} fallback={
         <div class="flex-1 overflow-auto font-mono text-sm">
           <Show when={loading()}>

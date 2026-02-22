@@ -29,6 +29,9 @@ export interface StashPanelProps {
 export function StashPanel(props: StashPanelProps) {
   const [stashes, setStashes] = createSignal<StashEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const [_operationLoading, setOperationLoading] = createSignal<string | null>(null);
+  void _operationLoading;
   const [selectedIndex, setSelectedIndex] = createSignal<number | null>(null);
   const [searchQuery, setSearchQuery] = createSignal("");
   const [showCreateDialog, setShowCreateDialog] = createSignal(false);
@@ -43,6 +46,7 @@ export function StashPanel(props: StashPanelProps) {
 
   const fetchStashes = async () => {
     setLoading(true);
+    setError(null);
     try {
       const projectPath = getProjectPath();
       const data = await gitStashListEnhanced(projectPath);
@@ -59,12 +63,15 @@ export function StashPanel(props: StashPanelProps) {
       setStashes(mappedStashes);
     } catch (err) {
       console.error("Failed to fetch stashes:", err);
+      setError(`Failed to load stashes: ${err}`);
     } finally {
       setLoading(false);
     }
   };
 
   const applyStash = async (index: number) => {
+    setOperationLoading(`apply-${index}`);
+    setError(null);
     try {
       const projectPath = getProjectPath();
       await gitStashApply(projectPath, index);
@@ -72,10 +79,15 @@ export function StashPanel(props: StashPanelProps) {
       fetchStashes();
     } catch (err) {
       console.error("Failed to apply stash:", err);
+      setError(`Failed to apply stash: ${err}`);
+    } finally {
+      setOperationLoading(null);
     }
   };
 
   const popStash = async (index: number) => {
+    setOperationLoading(`pop-${index}`);
+    setError(null);
     try {
       const projectPath = getProjectPath();
       await gitStashPop(projectPath, index);
@@ -84,10 +96,15 @@ export function StashPanel(props: StashPanelProps) {
       fetchStashes();
     } catch (err) {
       console.error("Failed to pop stash:", err);
+      setError(`Failed to pop stash: ${err}`);
+    } finally {
+      setOperationLoading(null);
     }
   };
 
   const dropStash = async (index: number) => {
+    setOperationLoading(`drop-${index}`);
+    setError(null);
     try {
       const projectPath = getProjectPath();
       await gitStashDrop(projectPath, index);
@@ -96,12 +113,17 @@ export function StashPanel(props: StashPanelProps) {
       fetchStashes();
     } catch (err) {
       console.error("Failed to drop stash:", err);
+      setError(`Failed to drop stash: ${err}`);
+    } finally {
+      setOperationLoading(null);
     }
   };
 
   const createStash = async () => {
     if (!newStashMessage().trim()) return;
 
+    setOperationLoading("create");
+    setError(null);
     try {
       const projectPath = getProjectPath();
       await gitStashCreate(projectPath, newStashMessage(), includeUntracked());
@@ -111,6 +133,9 @@ export function StashPanel(props: StashPanelProps) {
       fetchStashes();
     } catch (err) {
       console.error("Failed to create stash:", err);
+      setError(`Failed to create stash: ${err}`);
+    } finally {
+      setOperationLoading(null);
     }
   };
 
@@ -210,6 +235,20 @@ export function StashPanel(props: StashPanelProps) {
               onInput={(e) => setSearchQuery(e.currentTarget.value)}
             />
           </div>
+        </div>
+      </Show>
+
+      {/* Error Banner */}
+      <Show when={error()}>
+        <div
+          class="flex items-center gap-2 px-3 py-2 text-sm"
+          style={{ background: "var(--status-error-bg, rgba(239,68,68,0.1))", color: "var(--status-error, #ef4444)" }}
+        >
+          <Icon name="circle-exclamation" class="w-4 h-4 shrink-0" />
+          <span class="flex-1 truncate">{error()}</span>
+          <button class="p-0.5 rounded hover:bg-white/10" onClick={() => setError(null)}>
+            <Icon name="xmark" class="w-3.5 h-3.5" />
+          </button>
         </div>
       </Show>
 

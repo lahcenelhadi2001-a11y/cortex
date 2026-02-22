@@ -4,7 +4,7 @@
  * Wired to git_status and git_diff backend commands
  */
 
-import { Component, For, Show, createSignal, onMount, JSX } from "solid-js";
+import { Component, For, Show, createSignal, onMount, onCleanup, JSX } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { CortexIcon } from "./primitives/CortexIcon";
 import { VibeTabBar, type VibeTab } from "./vibe/VibeTabBar";
@@ -97,6 +97,8 @@ export const CortexChangesPanel: Component<CortexChangesPanelProps> = (props) =>
     }
   };
 
+  let dragCleanup: (() => void) | null = null;
+
   const handleDivider = (e: MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -106,10 +108,17 @@ export const CortexChangesPanel: Component<CortexChangesPanelProps> = (props) =>
     const onUp = () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
+      dragCleanup = null;
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
+    dragCleanup = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
   };
+
+  onCleanup(() => { dragCleanup?.(); });
 
   onMount(async () => {
     if (props.changes.length === 0 && props.projectPath) {

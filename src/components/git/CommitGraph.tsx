@@ -220,6 +220,7 @@ function CommitRow(props: CommitRowProps) {
 export function CommitGraph(props: CommitGraphProps) {
   const [commits, setCommits] = createSignal<Commit[]>(props.commits || []);
   const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
   const [searchQuery, setSearchQuery] = createSignal("");
   const [selectedHash, setSelectedHash] = createSignal<string | null>(props.selectedCommit || null);
   const [contextMenuPos, setContextMenuPos] = createSignal<{ x: number; y: number; commit: Commit } | null>(null);
@@ -265,6 +266,7 @@ export function CommitGraph(props: CommitGraphProps) {
 
   const fetchCommitHistory = async () => {
     setLoading(true);
+    setError(null);
     try {
       const projectPath = getProjectPath();
       
@@ -304,6 +306,7 @@ export function CommitGraph(props: CommitGraphProps) {
       setCommits(mappedCommits);
     } catch (err) {
       console.error("Failed to fetch commit history:", err);
+      setError(`Failed to load commit history: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -677,6 +680,20 @@ export function CommitGraph(props: CommitGraphProps) {
           </button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      <Show when={error()}>
+        <div
+          class="flex items-center gap-2 px-3 py-2 text-sm"
+          style={{ background: "var(--status-error-bg, rgba(239,68,68,0.1))", color: "var(--status-error, #ef4444)" }}
+        >
+          <Icon name="circle-exclamation" class="w-4 h-4 shrink-0" />
+          <span class="flex-1 truncate">{error()}</span>
+          <button class="p-0.5 rounded hover:bg-white/10" onClick={() => setError(null)}>
+            <Icon name="xmark" class="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </Show>
 
       {/* Search */}
       <div class="px-3 py-2 border-b" style={{ "border-color": "var(--border-weak)" }}>

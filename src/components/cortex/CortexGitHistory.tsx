@@ -165,6 +165,7 @@ const emptyStyle: JSX.CSSProperties = {
 export const CortexGitHistory: Component<CortexGitHistoryProps> = (props) => {
   const [commits, setCommits] = createSignal<GitCommit[]>([]);
   const [loading, setLoading] = createSignal(true);
+  const [error, setError] = createSignal<string | null>(null);
   const [searchQuery, setSearchQuery] = createSignal("");
   const [expandedHash, setExpandedHash] = createSignal<string | null>(null);
 
@@ -186,11 +187,13 @@ export const CortexGitHistory: Component<CortexGitHistoryProps> = (props) => {
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const result = await gitLog(projectPath, 100);
       setCommits(result);
     } catch (e) {
       logger.warn("Failed to fetch git history", e);
+      setError(`Failed to load history: ${e}`);
     } finally {
       setLoading(false);
     }
@@ -229,6 +232,13 @@ export const CortexGitHistory: Component<CortexGitHistoryProps> = (props) => {
       </div>
 
       <div style={listContainerStyle}>
+        <Show when={error()}>
+          <div style={{ display: "flex", "align-items": "center", gap: "8px", padding: "8px 16px", background: "rgba(239,68,68,0.1)", color: "#ef4444", "font-size": "12px" }}>
+            <span style={{ flex: 1, overflow: "hidden", "text-overflow": "ellipsis", "white-space": "nowrap" }}>{error()}</span>
+            <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", padding: "2px", "font-size": "12px" }}>✕</button>
+          </div>
+        </Show>
+
         <Show when={loading()}>
           <div style={loadingStyle}>
             <span>Loading history…</span>

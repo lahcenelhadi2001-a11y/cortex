@@ -42,6 +42,7 @@ export function BranchComparison(props: BranchComparisonProps) {
   const [baseBranch, setBaseBranch] = createSignal(props.baseBranch || "");
   const [compareBranch, setCompareBranch] = createSignal(props.compareBranch || "");
   const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
   const [stats, setStats] = createSignal<BranchCompareStats | null>(null);
   const [showBaseDropdown, setShowBaseDropdown] = createSignal(false);
   const [showCompareDropdown, setShowCompareDropdown] = createSignal(false);
@@ -64,6 +65,7 @@ export function BranchComparison(props: BranchComparisonProps) {
 
   const fetchComparison = async (base: string, compare: string) => {
     setLoading(true);
+    setError(null);
     try {
       const projectPath = getProjectPath();
       const data: GitCompareResult = await gitCompare(projectPath, base, compare);
@@ -91,6 +93,7 @@ export function BranchComparison(props: BranchComparisonProps) {
       });
     } catch (err) {
       console.error("Failed to fetch comparison:", err);
+      setError(`Failed to compare branches: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -273,6 +276,20 @@ export function BranchComparison(props: BranchComparisonProps) {
           </Show>
         </div>
       </div>
+
+      {/* Error Banner */}
+      <Show when={error()}>
+        <div
+          class="flex items-center gap-2 px-3 py-2 text-sm"
+          style={{ background: "var(--status-error-bg, rgba(239,68,68,0.1))", color: "var(--status-error, #ef4444)" }}
+        >
+          <Icon name="circle-exclamation" class="w-4 h-4 shrink-0" />
+          <span class="flex-1 truncate">{error()}</span>
+          <button class="p-0.5 rounded hover:bg-white/10" onClick={() => setError(null)}>
+            <Icon name="xmark" class="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </Show>
 
       {/* Stats summary */}
       <Show when={stats()}>

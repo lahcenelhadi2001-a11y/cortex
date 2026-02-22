@@ -362,10 +362,13 @@ const [signCommits, setSignCommits] = createSignal(false);
 
   const clearError = () => setError(null);
 
+  let errorTimeout: ReturnType<typeof setTimeout> | undefined;
   const showError = (message: string, type: "error" | "warning" = "error") => {
     setError({ message, type });
-    setTimeout(clearError, 5000);
+    if (errorTimeout) clearTimeout(errorTimeout);
+    errorTimeout = setTimeout(clearError, 5000);
   };
+  onCleanup(() => { if (errorTimeout) clearTimeout(errorTimeout); });
 
   const fetchCommits = async (repoPath: string) => {
     try {

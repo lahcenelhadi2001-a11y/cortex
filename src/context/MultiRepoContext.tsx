@@ -415,7 +415,7 @@ export function MultiRepoProvider(props: ParentProps) {
   }, 1000);
   
   // Track and execute git operations with retry and error handling
-  const _executeGitOperation = async <T,>(
+  const executeGitOperation = async <T,>(
     operationName: string,
     operation: () => Promise<T>,
     options: { retry?: boolean; silent?: boolean } = {}
@@ -783,26 +783,48 @@ export function MultiRepoProvider(props: ParentProps) {
     }
   };
 
-  // Refresh a specific repository
+  // Track in-flight refresh calls per repo to prevent overlapping refreshes
+  const refreshInFlight = new Map<string, Promise<void>>();
+
+  // Refresh a specific repository (with concurrency guard)
   const refreshRepository = async (id: string) => {
+    const existing = refreshInFlight.get(id);
+    if (existing) {
+      return existing;
+    }
+
     const repoIndex = state.repositories.findIndex(r => r.id === id);
     if (repoIndex === -1) return;
 
-    setState("repositories", repoIndex, "status", "loading");
+    const doRefresh = async () => {
+      setState("repositories", repoIndex, "status", "loading");
 
-    try {
-      const updates = await fetchRepositoryStatus(id);
-      setState("repositories", repoIndex, produce((repo) => {
-        Object.assign(repo, updates);
-        repo.status = "idle";
-      }));
-    } catch (err) {
-      console.error(`[MultiRepo] Failed to refresh repository: ${id}`, err);
-      setState("repositories", repoIndex, produce((repo) => {
-        repo.status = "error";
-        repo.lastError = String(err);
-      }));
-    }
+      try {
+        const updates = await fetchRepositoryStatus(id);
+        const currentIndex = state.repositories.findIndex(r => r.id === id);
+        if (currentIndex !== -1) {
+          setState("repositories", currentIndex, produce((repo) => {
+            Object.assign(repo, updates);
+            repo.status = "idle";
+          }));
+        }
+      } catch (err) {
+        console.error(`[MultiRepo] Failed to refresh repository: ${id}`, err);
+        const currentIndex = state.repositories.findIndex(r => r.id === id);
+        if (currentIndex !== -1) {
+          setState("repositories", currentIndex, produce((repo) => {
+            repo.status = "error";
+            repo.lastError = String(err);
+          }));
+        }
+      } finally {
+        refreshInFlight.delete(id);
+      }
+    };
+
+    const promise = doRefresh();
+    refreshInFlight.set(id, promise);
+    return promise;
   };
 
   // Refresh all repositories
@@ -913,10 +935,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/stage`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, files }),
-    });
+    try {
+      await apiCall(`/stage`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, files }),
+      });
+    } catch (err) {
+      gitLogger.error("Stage files failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -926,10 +953,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/unstage`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, files }),
-    });
+    try {
+      await apiCall(`/unstage`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, files }),
+      });
+    } catch (err) {
+      gitLogger.error("Unstage files failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -939,10 +971,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/stage-all`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path }),
-    });
+    try {
+      await apiCall(`/stage-all`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path }),
+      });
+    } catch (err) {
+      gitLogger.error("Stage all failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -952,10 +989,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/unstage-all`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path }),
-    });
+    try {
+      await apiCall(`/unstage-all`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path }),
+      });
+    } catch (err) {
+      gitLogger.error("Unstage all failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -965,10 +1007,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/discard`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, files }),
-    });
+    try {
+      await apiCall(`/discard`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, files }),
+      });
+    } catch (err) {
+      gitLogger.error("Discard changes failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -979,11 +1026,15 @@ export function MultiRepoProvider(props: ParentProps) {
     if (!repo) return false;
 
     try {
-      await invoke<string>("git_commit", { path: repo.path, message, sign });
+      await executeGitOperation(
+        `commit:${repoId}`,
+        () => invoke<string>("git_commit", { path: repo.path, message, sign }),
+        { retry: true }
+      );
       await refreshRepository(repoId);
       return true;
     } catch (err) {
-      console.error("[MultiRepo] Commit failed:", err);
+      gitLogger.error("Commit failed:", err);
       return false;
     }
   };
@@ -993,10 +1044,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/checkout`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, branch }),
-    });
+    try {
+      await apiCall(`/checkout`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, branch }),
+      });
+    } catch (err) {
+      gitLogger.error("Checkout failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -1006,10 +1062,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/branch/create`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, name, checkout: checkoutBranch }),
-    });
+    try {
+      await apiCall(`/branch/create`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, name, checkout: checkoutBranch }),
+      });
+    } catch (err) {
+      gitLogger.error("Create branch failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -1019,10 +1080,15 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    await apiCall(`/branch/delete`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, name, force }),
-    });
+    try {
+      await apiCall(`/branch/delete`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, name, force }),
+      });
+    } catch (err) {
+      gitLogger.error("Delete branch failed:", err);
+      throw err;
+    }
 
     await refreshRepository(repoId);
   };
@@ -1032,13 +1098,19 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return { hasConflicts: false };
 
-    const result = await apiCall<{ hasConflicts: boolean }>(`/merge`, {
-      method: "POST",
-      body: JSON.stringify({ path: repo.path, branch }),
-    });
+    try {
+      const result = await apiCall<{ hasConflicts: boolean }>(`/merge`, {
+        method: "POST",
+        body: JSON.stringify({ path: repo.path, branch }),
+      });
 
-    await refreshRepository(repoId);
-    return { hasConflicts: result?.hasConflicts ?? false };
+      await refreshRepository(repoId);
+      return { hasConflicts: result?.hasConflicts ?? false };
+    } catch (err) {
+      gitLogger.error("Merge failed:", err);
+      await refreshRepository(repoId);
+      throw err;
+    }
   };
 
   // Push - uses followTagsWhenSync setting to optionally push tags
@@ -1046,20 +1118,18 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    // Use followTags if explicitly provided, otherwise use setting
     const useFollowTags = followTags !== undefined ? followTags : gitSettings.followTagsWhenSync;
 
-    try {
-      await invoke("git_push_with_tags", { 
+    await executeGitOperation(
+      `push:${repoId}`,
+      () => invoke("git_push_with_tags", { 
         path: repo.path, 
         remote: remote ?? null, 
         branch: branch ?? null,
         followTags: useFollowTags
-      });
-    } catch (err) {
-      console.error("[MultiRepo] Push failed:", err);
-      throw err;
-    }
+      }),
+      { retry: true }
+    );
 
     await refreshRepository(repoId);
   };
@@ -1069,24 +1139,28 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    // Use rebase if explicitly requested or if rebaseWhenSync setting is enabled
     const useRebase = rebase !== undefined ? rebase : gitSettings.rebaseWhenSync;
     
-    try {
-      if (useRebase) {
-        gitLogger.debug(`Pulling with rebase for ${repo.name}`);
-        await invoke("git_pull_rebase", { path: repo.path, remote, branch });
-      } else {
-        await invoke("git_pull", { path: repo.path, remote, branch });
-      }
-    } catch (err) {
-      // Fallback to apiCall if the new invoke commands don't exist
-      gitLogger.warn(`Pull invoke failed, trying apiCall:`, err);
-      await apiCall(`/pull`, {
-        method: "POST",
-        body: JSON.stringify({ path: repo.path, remote, branch, rebase: useRebase }),
-      });
-    }
+    await executeGitOperation(
+      `pull:${repoId}`,
+      async () => {
+        try {
+          if (useRebase) {
+            gitLogger.debug(`Pulling with rebase for ${repo.name}`);
+            await invoke("git_pull_rebase", { path: repo.path, remote, branch });
+          } else {
+            await invoke("git_pull", { path: repo.path, remote, branch });
+          }
+        } catch (err) {
+          gitLogger.warn(`Pull invoke failed, trying apiCall:`, err);
+          await apiCall(`/pull`, {
+            method: "POST",
+            body: JSON.stringify({ path: repo.path, remote, branch, rebase: useRebase }),
+          });
+        }
+      },
+      { retry: true }
+    );
 
     await refreshRepository(repoId);
   };
@@ -1101,21 +1175,19 @@ export function MultiRepoProvider(props: ParentProps) {
     const repo = getRepositoryById(repoId);
     if (!repo) return;
 
-    // Use settings if not explicitly provided
     const usePrune = prune !== undefined ? prune : gitSettings.pruneOnFetch;
     const useTags = tags !== undefined ? tags : gitSettings.fetchTags;
 
-    try {
-      await invoke("git_fetch_with_options", { 
+    await executeGitOperation(
+      `fetch:${repoId}`,
+      () => invoke("git_fetch_with_options", { 
         path: repo.path, 
         remote: remote ?? null,
         prune: usePrune,
         tags: useTags
-      });
-    } catch (err) {
-      gitLogger.error("Fetch failed:", err);
-      throw err;
-    }
+      }),
+      { retry: true }
+    );
 
     await refreshRepository(repoId);
   };
@@ -1312,7 +1384,6 @@ export function MultiRepoProvider(props: ParentProps) {
   // Suppress unused warnings - these are kept for future use
   void _REFRESH_INTERVAL;
   void _eventuallyUpdateWhenIdleAndWait;
-  void _executeGitOperation;
 
   const contextValue: MultiRepoContextValue = {
     state,

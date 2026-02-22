@@ -33,6 +33,7 @@ interface BlameViewProps {
 export function BlameView(props: BlameViewProps) {
   const [blameData, setBlameData] = createSignal<BlameLine[]>([]);
   const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
   const [hoveredCommit, setHoveredCommit] = createSignal<string | null>(null);
   const [selectedCommit, setSelectedCommit] = createSignal<string | null>(null);
   const [copiedHash, setCopiedHash] = createSignal<string | null>(null);
@@ -42,6 +43,7 @@ export function BlameView(props: BlameViewProps) {
 
   const fetchBlame = async (file: string) => {
     setLoading(true);
+    setError(null);
     try {
       const projectPath = getProjectPath();
 
@@ -81,6 +83,7 @@ export function BlameView(props: BlameViewProps) {
       }
     } catch (err) {
       console.error("Failed to fetch blame:", err);
+      setError(`Failed to load blame data: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -219,6 +222,19 @@ export function BlameView(props: BlameViewProps) {
           </div>
         }
       >
+        <Show when={error()}>
+          <div
+            class="flex items-center gap-2 px-3 py-2 text-sm"
+            style={{ background: "var(--status-error-bg, rgba(239,68,68,0.1))", color: "var(--status-error, #ef4444)" }}
+          >
+            <Icon name="circle-exclamation" class="w-4 h-4 shrink-0" />
+            <span class="flex-1 truncate">{error()}</span>
+            <button class="p-0.5 rounded hover:bg-white/10" onClick={() => setError(null)}>
+              <Icon name="xmark" class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </Show>
+
         <Show when={loading()}>
           <div class="flex items-center justify-center h-full">
             <span style={{ color: "var(--text-weak)" }}>Loading blame...</span>

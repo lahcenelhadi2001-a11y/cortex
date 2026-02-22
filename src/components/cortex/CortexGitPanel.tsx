@@ -69,6 +69,7 @@ export const CortexGitPanel: Component = () => {
   const [expandStash, setExpandStash] = createSignal(false);
   const [stashes, setStashes] = createSignal<StashEntry[]>([]);
   const [stashLoading, setStashLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
   let dotsRef: HTMLDivElement | undefined;
 
   const repo = () => multiRepo?.activeRepository() ?? null;
@@ -109,19 +110,22 @@ export const CortexGitPanel: Component = () => {
   const handleStashCreate = async () => {
     const r = repo();
     if (!r) return;
-    try { await gitStashCreate(r.path, "", true); await fetchStashes(); refresh(); } catch { /* ignore */ }
+    setError(null);
+    try { await gitStashCreate(r.path, "", true); await fetchStashes(); refresh(); } catch (err) { setError(`Stash create failed: ${err}`); }
   };
 
   const handleStashPop = async (index: number) => {
     const r = repo();
     if (!r) return;
-    try { await gitStashPop(r.path, index); await fetchStashes(); refresh(); } catch { /* ignore */ }
+    setError(null);
+    try { await gitStashPop(r.path, index); await fetchStashes(); refresh(); } catch (err) { setError(`Stash pop failed: ${err}`); }
   };
 
   const handleStashDrop = async (index: number) => {
     const r = repo();
     if (!r) return;
-    try { await gitStashDrop(r.path, index); await fetchStashes(); } catch { /* ignore */ }
+    setError(null);
+    try { await gitStashDrop(r.path, index); await fetchStashes(); } catch (err) { setError(`Stash drop failed: ${err}`); }
   };
 
   const dotsAction = (action: string) => {
@@ -200,6 +204,14 @@ export const CortexGitPanel: Component = () => {
           Amend previous commit
         </label>
       </div>
+
+      <Show when={error()}>
+        <div style={{ display: "flex", "align-items": "center", gap: "8px", padding: "8px 12px", background: "rgba(239,68,68,0.1)", color: "#ef4444", "font-size": "13px" }}>
+          <CortexIcon name="alert-circle" size={14} color="#ef4444" />
+          <span style={{ flex: 1, overflow: "hidden", "text-overflow": "ellipsis", "white-space": "nowrap" }}>{error()}</span>
+          <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", padding: "2px" }}>✕</button>
+        </div>
+      </Show>
 
       <div style={{ flex: 1, overflow: "auto" }}>
         <SectionHeader title="Changes" count={unstaged().length} expanded={expandChanges()} onToggle={() => setExpandChanges((v) => !v)} actions={
