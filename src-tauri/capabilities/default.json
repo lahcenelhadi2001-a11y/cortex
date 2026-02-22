@@ -58,6 +58,7 @@
     "os:allow-os-type",
     "os:allow-arch",
     "deep-link:default",
+    "fs:default",
     "mcp-bridge:default"
   ]
 }

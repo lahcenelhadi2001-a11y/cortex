@@ -19,6 +19,9 @@
 /* Tailwind MUST come first, then our tokens override it */
 @import "tailwindcss";
 
+/* Global base styles */
+@import "./globals.css";
+
 /* Design tokens define all CSS custom properties - MUST come after Tailwind */
 @import "./design-tokens.css";
 
