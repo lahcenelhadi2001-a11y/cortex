@@ -453,6 +453,7 @@ pub fn register_state(
         .manage(crate::extensions::api::debug::DebugApiState::new())
         .manage(crate::extensions::api::scm::ScmApiState::new())
         .manage(crate::workspace::manager::WorkspaceManagerState::new())
+        .manage(Arc::new(crate::project::ProjectState::new()))
         .manage(crate::remote::port_forwarding::PortForwardingState::new())
         .manage(LazyState::new(SandboxState::new))
         .manage(crate::remote::tunnel::TunnelState::new())

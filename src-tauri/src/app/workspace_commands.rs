@@ -147,6 +147,13 @@ macro_rules! workspace_commands {
             $crate::fs::fs_get_supported_encodings,
             // Workspace edit support
             $crate::fs::apply_workspace_edit,
+            // Unified file commands (fs_commands module)
+            $crate::fs_commands::read_file,
+            $crate::fs_commands::delete_entry,
+            // Project management commands
+            $crate::project::open_project,
+            $crate::project::get_recent_projects,
+            $crate::project::save_recent_project,
             // Batch command system for IPC optimization
             $crate::batch_ipc::batch_invoke,
             $crate::batch::batch_commands,
