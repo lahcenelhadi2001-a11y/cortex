@@ -1,9 +1,11 @@
-import { Show, Suspense, For, lazy } from "solid-js";
+import { Show, Suspense, For, lazy, onMount, onCleanup } from "solid-js";
 import { BOTTOM_PANEL_TABS, BOTTOM_PANEL_MIN_HEIGHT, BOTTOM_PANEL_MAX_HEIGHT, SidebarSkeleton } from "./types";
 import type { BottomPanelTab } from "./types";
 
 const CortexOutputPanel = lazy(() => import("@/components/cortex/output/OutputPanel").then(m => ({ default: m.OutputPanel })));
 const CortexDiagnosticsPanel = lazy(() => import("@/components/cortex/diagnostics/DiagnosticsPanel").then(m => ({ default: m.DiagnosticsPanel })));
+const CortexDiffViewer = lazy(() => import("@/components/cortex/CortexDiffViewer").then(m => ({ default: m.CortexDiffViewer })));
+const CortexGitHistory = lazy(() => import("@/components/cortex/CortexGitHistory").then(m => ({ default: m.CortexGitHistory })));
 
 export interface CortexBottomPanelContainerProps {
   bottomPanelTab: BottomPanelTab;
@@ -15,6 +17,14 @@ export interface CortexBottomPanelContainerProps {
 }
 
 export function CortexBottomPanelContainer(props: CortexBottomPanelContainerProps) {
+  onMount(() => {
+    const handler = () => {
+      props.onTabChange("history" as BottomPanelTab);
+    };
+    window.addEventListener("cortex:git:history", handler);
+    onCleanup(() => window.removeEventListener("cortex:git:history", handler));
+  });
+
   return (
     <Show when={!props.bottomPanelCollapsed}>
       <div
@@ -122,6 +132,16 @@ export function CortexBottomPanelContainer(props: CortexBottomPanelContainerProp
                 overflow: "hidden",
               }}
             />
+          </Show>
+          <Show when={props.bottomPanelTab === "diff"}>
+            <Suspense fallback={<SidebarSkeleton />}>
+              <CortexDiffViewer />
+            </Suspense>
+          </Show>
+          <Show when={props.bottomPanelTab === "history"}>
+            <Suspense fallback={<SidebarSkeleton />}>
+              <CortexGitHistory onClose={() => props.onCollapse()} />
+            </Suspense>
           </Show>
         </div>
       </div>

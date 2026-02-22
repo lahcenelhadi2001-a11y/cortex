@@ -5,7 +5,10 @@ use std::collections::HashMap;
 
 use super::command::git_command_with_timeout;
 use super::helpers::find_repo;
-use super::types::{BranchComparison, CommitComparison, CommitDetails, CommitFile, GitCommit};
+use super::types::{
+    BranchComparison, CommitComparison, CommitDetails, CommitFile, GitCommit, GitCompareCommit,
+    GitCompareFile, GitCompareResult,
+};
 use super::types::{CommitGraphNode, CommitGraphOptions, CommitGraphResult};
 use super::types::{GraphCommitNode, GraphRef};
 use std::path::Path;
@@ -427,6 +430,121 @@ pub async fn git_compare_branches(
             commits_ahead,
             commits_behind,
             can_fast_forward,
+        })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Compare two branches with full file and commit details
+#[tauri::command]
+pub async fn git_compare(
+    path: String,
+    base: String,
+    compare: String,
+) -> Result<GitCompareResult, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo_root = super::helpers::get_repo_root(&path)?;
+        let repo_root_path = Path::new(&repo_root);
+
+        let rev_list_output = git_command_with_timeout(
+            &[
+                "rev-list",
+                "--left-right",
+                "--count",
+                &format!("{}...{}", base, compare),
+            ],
+            repo_root_path,
+        )?;
+        let counts = String::from_utf8_lossy(&rev_list_output.stdout);
+        let parts: Vec<&str> = counts.trim().split('\t').collect();
+        let behind = parts
+            .first()
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or(0);
+        let ahead = parts
+            .get(1)
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or(0);
+
+        let log_output = git_command_with_timeout(
+            &[
+                "log",
+                "--format=%H|%h|%s|%an|%ci",
+                &format!("{}..{}", base, compare),
+            ],
+            repo_root_path,
+        )?;
+        let log_stdout = String::from_utf8_lossy(&log_output.stdout);
+        let commits: Vec<GitCompareCommit> = log_stdout
+            .lines()
+            .filter(|l| !l.is_empty())
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.splitn(5, '|').collect();
+                if parts.len() >= 5 {
+                    Some(GitCompareCommit {
+                        hash: parts[0].to_string(),
+                        short_hash: parts[1].to_string(),
+                        message: parts[2].to_string(),
+                        author: parts[3].to_string(),
+                        date: parts[4].to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let diff_output = git_command_with_timeout(
+            &[
+                "diff",
+                "--numstat",
+                "--diff-filter=ACDMRT",
+                &format!("{}...{}", base, compare),
+            ],
+            repo_root_path,
+        )?;
+        let diff_stdout = String::from_utf8_lossy(&diff_output.stdout);
+        let mut total_additions: u32 = 0;
+        let mut total_deletions: u32 = 0;
+        let files: Vec<GitCompareFile> = diff_stdout
+            .lines()
+            .filter(|l| !l.is_empty())
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split('\t').collect();
+                if parts.len() >= 3 {
+                    let additions = parts[0].parse::<u32>().unwrap_or(0);
+                    let deletions = parts[1].parse::<u32>().unwrap_or(0);
+                    total_additions += additions;
+                    total_deletions += deletions;
+                    let file_path = parts[2].to_string();
+                    let status = if additions > 0 && deletions > 0 {
+                        "modified"
+                    } else if additions > 0 {
+                        "added"
+                    } else {
+                        "deleted"
+                    };
+                    Some(GitCompareFile {
+                        path: file_path,
+                        status: status.to_string(),
+                        additions,
+                        deletions,
+                        old_path: None,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(GitCompareResult {
+            ahead,
+            behind,
+            commits,
+            files,
+            total_additions,
+            total_deletions,
         })
     })
     .await

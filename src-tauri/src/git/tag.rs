@@ -267,21 +267,47 @@ pub async fn git_delete_remote_tag(
 
 /// Checkout a tag (creates detached HEAD)
 #[tauri::command]
-pub async fn git_checkout_tag(path: String, name: String) -> Result<(), String> {
+pub async fn git_checkout_tag(path: String, tag_name: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let repo_root = get_repo_root(&path)?;
         let repo_root_path = Path::new(&repo_root);
-        let tag_ref = format!("tags/{}", name);
+        let tag_ref = format!("tags/{}", tag_name);
 
         let output = git_command_with_timeout(&["checkout", &tag_ref], repo_root_path)?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Failed to checkout tag '{}': {}", name, stderr));
+            return Err(format!("Failed to checkout tag '{}': {}", tag_name, stderr));
         }
 
-        info!("Checked out tag: {}", name);
+        info!("Checked out tag: {}", tag_name);
         Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Get diff between a tag and current HEAD
+#[tauri::command]
+pub async fn git_tag_diff(path: String, tag_name: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo_root = get_repo_root(&path)?;
+        let repo_root_path = Path::new(&repo_root);
+
+        let output = git_command_with_timeout(
+            &["diff", &format!("tags/{}", tag_name), "HEAD"],
+            repo_root_path,
+        )?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "Failed to get tag diff for '{}': {}",
+                tag_name, stderr
+            ));
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))?

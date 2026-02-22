@@ -1,7 +1,7 @@
 //! Git diff operations.
 
 use super::helpers::{find_repo, get_repo_root};
-use super::types::{DiffHunk, DiffHunkLine, DiffHunksResult};
+use super::types::{DiffDataStructured, DiffHunk, DiffHunkLine, DiffHunksResult};
 use super::types::{
     DiffHunkData, DiffLine, DiffLineType, StructuredDiff, WordDiffLine, WordDiffResult,
     WordDiffSegment, WordDiffSegmentType,
@@ -136,6 +136,69 @@ pub async fn git_diff_between_commits(
             .diff_tree_to_tree(Some(&from_tree), Some(&to_tree), Some(&mut diff_opts))
             .map_err(|e| format!("Failed to diff commits: {}", e))?;
         parse_diff_to_structured(&diff)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Get diff for a specific file at a specific commit
+#[tauri::command]
+pub async fn git_diff_commit(
+    path: String,
+    file: String,
+    commit: String,
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo_root = get_repo_root(&path)?;
+        let repo_root_path = std::path::Path::new(&repo_root);
+
+        let output = super::command::git_command_with_timeout(
+            &["diff", &format!("{}~1..{}", commit, commit), "--", &file],
+            repo_root_path,
+        )?;
+
+        if !output.status.success() {
+            let output2 = super::command::git_command_with_timeout(
+                &["show", &commit, "--format=", "--", &file],
+                repo_root_path,
+            )?;
+            return Ok(String::from_utf8_lossy(&output2.stdout).to_string());
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Get structured diff data for working directory changes
+#[tauri::command]
+pub async fn git_diff_structured(
+    path: String,
+    file_path: Option<String>,
+) -> Result<Vec<DiffDataStructured>, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo = find_repo(&path)?;
+        let mut diff_opts = git2::DiffOptions::new();
+        if let Some(ref fp) = file_path {
+            diff_opts.pathspec(fp);
+        }
+        let diff = repo
+            .diff_index_to_workdir(None, Some(&mut diff_opts))
+            .map_err(|e| format!("Failed to get diff: {}", e))?;
+
+        let structured = parse_diff_to_structured(&diff)?;
+        Ok(structured
+            .into_iter()
+            .map(|s| DiffDataStructured {
+                path: s.file_path,
+                old_path: None,
+                binary: false,
+                additions: s.additions,
+                deletions: s.deletions,
+                hunks: s.hunks,
+            })
+            .collect())
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))?

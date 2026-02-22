@@ -289,6 +289,30 @@ pub async fn git_reset(
     .map_err(|e| format!("Task join error: {}", e))?
 }
 
+/// Checkout a specific commit (creates detached HEAD state)
+#[tauri::command]
+pub async fn git_checkout_commit(path: String, commit_hash: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let repo_root = get_repo_root(&path)?;
+        let repo_root_path = Path::new(&repo_root);
+
+        let output = git_command_with_timeout(&["checkout", &commit_hash], repo_root_path)?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "Failed to checkout commit '{}': {}",
+                commit_hash, stderr
+            ));
+        }
+
+        info!("[Git] Checked out commit {}", commit_hash);
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
 /// Revert a commit
 #[tauri::command]
 pub async fn git_revert(path: Option<String>, hash: String) -> Result<(), String> {

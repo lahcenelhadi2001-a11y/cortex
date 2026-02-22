@@ -21,6 +21,21 @@ vi.mock("@/components/cortex/diagnostics/DiagnosticsPanel", () => ({
   DiagnosticsPanel: () => <div data-testid="diagnostics-panel">Diagnostics</div>,
 }));
 
+vi.mock("@/components/cortex/CortexDiffViewer", () => ({
+  CortexDiffViewer: () => <div data-testid="diff-viewer">Diff Viewer</div>,
+}));
+
+vi.mock("@/components/cortex/CortexGitHistory", () => ({
+  CortexGitHistory: (props: { onClose?: () => void }) => (
+    <div data-testid="git-history">
+      Git History
+      <Show when={props.onClose}>
+        <button data-testid="history-close" onClick={() => props.onClose!()}>Close</button>
+      </Show>
+    </div>
+  ),
+}));
+
 function createDefaultProps(overrides: Partial<CortexBottomPanelContainerProps> = {}): CortexBottomPanelContainerProps {
   return {
     bottomPanelTab: "terminal",
@@ -116,6 +131,20 @@ describe("CortexBottomPanelContainer", () => {
 
       const terminalEmbed = container.querySelector('[data-terminal-embed="true"]');
       expect(terminalEmbed).toBeNull();
+    });
+
+    it("should render diff viewer when diff tab is active", async () => {
+      const props = createDefaultProps({ bottomPanelTab: "diff" });
+      const { findByTestId } = renderWithSuspense(props);
+
+      expect(await findByTestId("diff-viewer")).toBeTruthy();
+    });
+
+    it("should render git history when history tab is active", async () => {
+      const props = createDefaultProps({ bottomPanelTab: "history" });
+      const { findByTestId } = renderWithSuspense(props);
+
+      expect(await findByTestId("git-history")).toBeTruthy();
     });
   });
 

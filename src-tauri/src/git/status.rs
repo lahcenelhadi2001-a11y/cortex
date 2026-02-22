@@ -415,6 +415,66 @@ pub async fn git_branch(path: String) -> Result<GitBranchResponse, String> {
     .map_err(|e| format!("Task join error: {}", e))?
 }
 
+/// Get current branch name as a simple string
+#[tauri::command]
+pub async fn git_current_branch(path: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo = find_repo(&path)?;
+        match repo.head() {
+            Ok(head) => {
+                if head.is_branch() {
+                    Ok(head.shorthand().unwrap_or("HEAD").to_string())
+                } else {
+                    Ok(head
+                        .target()
+                        .map(|oid| oid.to_string()[..7].to_string())
+                        .unwrap_or_else(|| "HEAD".to_string()))
+                }
+            }
+            Err(e) => {
+                if e.code() == git2::ErrorCode::UnbornBranch {
+                    let default_branch = repo
+                        .config()
+                        .ok()
+                        .and_then(|c| c.get_string("init.defaultBranch").ok())
+                        .unwrap_or_else(|| "main".to_string());
+                    Ok(default_branch)
+                } else {
+                    Err(format!("Failed to get HEAD: {}", e))
+                }
+            }
+        }
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Get the URL of the default remote (origin)
+#[tauri::command]
+pub async fn git_remote_url(path: String) -> Result<Option<String>, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo = find_repo(&path)?;
+        match repo.find_remote("origin") {
+            Ok(remote) => Ok(remote.url().map(|u| u.to_string())),
+            Err(_) => {
+                let remotes = repo
+                    .remotes()
+                    .map_err(|e| format!("Failed to get remotes: {}", e))?;
+                if let Some(name) = remotes.iter().flatten().next() {
+                    let remote = repo
+                        .find_remote(name)
+                        .map_err(|e| format!("Failed to find remote: {}", e))?;
+                    Ok(remote.url().map(|u| u.to_string()))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
 /// Get current HEAD commit SHA
 #[tauri::command]
 pub async fn git_head(path: String) -> Result<GitHeadResponse, String> {

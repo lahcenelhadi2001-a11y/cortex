@@ -164,6 +164,19 @@ macro_rules! git_commands {
             $crate::git::forge::git_forge_pr_checks,
             $crate::git::forge::git_forge_get_pr_reviews,
             $crate::git::forge::git_forge_authenticate,
+            // Git merge editor commands
+            $crate::git::merge_editor::git_get_merge_conflicts,
+            $crate::git::merge_editor::git_get_three_way_diff,
+            $crate::git::merge_editor::git_resolve_conflict,
+            $crate::git::merge_editor::git_abort_merge,
+            // Additional git commands
+            $crate::git::status::git_current_branch,
+            $crate::git::status::git_remote_url,
+            $crate::git::diff::git_diff_commit,
+            $crate::git::diff::git_diff_structured,
+            $crate::git::log::git_compare,
+            $crate::git::branch::git_checkout_commit,
+            $crate::git::tag::git_tag_diff,
         ])
     };
 }

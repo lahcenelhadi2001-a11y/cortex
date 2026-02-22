@@ -474,6 +474,52 @@ pub struct StructuredDiff {
     pub deletions: u32,
 }
 
+/// Structured diff data matching frontend DiffDataStructured interface
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffDataStructured {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub binary: bool,
+    pub additions: u32,
+    pub deletions: u32,
+    pub hunks: Vec<DiffHunkData>,
+}
+
+/// Compare result matching frontend GitCompareResult interface
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitCompareResult {
+    pub ahead: u32,
+    pub behind: u32,
+    pub commits: Vec<GitCompareCommit>,
+    pub files: Vec<GitCompareFile>,
+    pub total_additions: u32,
+    pub total_deletions: u32,
+}
+
+/// A commit entry in a branch comparison
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitCompareCommit {
+    pub hash: String,
+    pub short_hash: String,
+    pub message: String,
+    pub author: String,
+    pub date: String,
+}
+
+/// A file entry in a branch comparison
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitCompareFile {
+    pub path: String,
+    pub status: String,
+    pub additions: u32,
+    pub deletions: u32,
+    pub old_path: Option<String>,
+}
+
 // ============================================================================
 // Word Diff Types
 // ============================================================================
