@@ -52,52 +52,52 @@ pub async fn git_watch_repository(
     let wid_for_log = watch_id.clone();
     std::thread::spawn(move || {
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
-        let mut last_emit = std::time::Instant::now();
-        let debounce_duration = Duration::from_millis(500);
+            let mut last_emit = std::time::Instant::now();
+            let debounce_duration = Duration::from_millis(500);
 
-        // Simple polling-based watcher for .git directory
-        // Check for modifications every 500ms
-        while running_clone.load(Ordering::Relaxed) {
-            std::thread::sleep(Duration::from_millis(500));
+            // Simple polling-based watcher for .git directory
+            // Check for modifications every 500ms
+            while running_clone.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(500));
 
-            // Check if HEAD, index, or refs changed
-            let head_path = git_dir.join("HEAD");
-            let index_path = git_dir.join("index");
+                // Check if HEAD, index, or refs changed
+                let head_path = git_dir.join("HEAD");
+                let index_path = git_dir.join("index");
 
-            let should_emit = if let (Ok(head_meta), Ok(index_meta)) = (
-                std::fs::metadata(&head_path),
-                std::fs::metadata(&index_path),
-            ) {
-                // Check if modified recently (within last second)
-                if let (Ok(head_modified), Ok(index_modified)) =
-                    (head_meta.modified(), index_meta.modified())
-                {
-                    let now = std::time::SystemTime::now();
-                    let one_sec = Duration::from_secs(1);
+                let should_emit = if let (Ok(head_meta), Ok(index_meta)) = (
+                    std::fs::metadata(&head_path),
+                    std::fs::metadata(&index_path),
+                ) {
+                    // Check if modified recently (within last second)
+                    if let (Ok(head_modified), Ok(index_modified)) =
+                        (head_meta.modified(), index_meta.modified())
+                    {
+                        let now = std::time::SystemTime::now();
+                        let one_sec = Duration::from_secs(1);
 
-                    now.duration_since(head_modified)
-                        .map(|d| d < one_sec)
-                        .unwrap_or(false)
-                        || now
-                            .duration_since(index_modified)
+                        now.duration_since(head_modified)
                             .map(|d| d < one_sec)
                             .unwrap_or(false)
+                            || now
+                                .duration_since(index_modified)
+                                .map(|d| d < one_sec)
+                                .unwrap_or(false)
+                    } else {
+                        false
+                    }
                 } else {
                     false
-                }
-            } else {
-                false
-            };
+                };
 
-            if should_emit && last_emit.elapsed() > debounce_duration {
-                if let Err(e) = app_handle.emit("git:repository-changed", &path_clone) {
-                    warn!("Failed to emit git:repository-changed event: {}", e);
+                if should_emit && last_emit.elapsed() > debounce_duration {
+                    if let Err(e) = app_handle.emit("git:repository-changed", &path_clone) {
+                        warn!("Failed to emit git:repository-changed event: {}", e);
+                    }
+                    last_emit = std::time::Instant::now();
                 }
-                last_emit = std::time::Instant::now();
             }
-        }
 
-        info!("Git watcher {} stopped", watch_id_clone);
+            info!("Git watcher {} stopped", watch_id_clone);
         })) {
             warn!("Git watcher {} panicked: {:?}", wid_for_log, e);
         }

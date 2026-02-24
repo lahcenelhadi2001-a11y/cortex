@@ -436,8 +436,7 @@ impl Tool for GetFileTreeTool {
         }
         let tree = build(&PathBuf::from(path), 0, max_depth, &ignore)
             .unwrap_or_else(|| serde_json::json!({"error": "Failed"}));
-        serde_json::to_string(&tree)
-            .map_err(|e| format!("JSON serialization failed: {}", e))
+        serde_json::to_string(&tree).map_err(|e| format!("JSON serialization failed: {}", e))
     }
 }
 

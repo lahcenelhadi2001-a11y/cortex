@@ -95,7 +95,7 @@ pub async fn execute_wasm_command(
         .wasm_runtime
         .execute_command(&extension_id, &command, &args_json)?;
 
-    Ok(serde_json::from_str(&result).unwrap_or_else(|_| serde_json::Value::String(result)))
+    Ok(serde_json::from_str(&result).unwrap_or(serde_json::Value::String(result)))
 }
 
 #[cfg(not(feature = "wasm-extensions"))]

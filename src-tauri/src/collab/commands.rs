@@ -274,6 +274,7 @@ pub async fn collab_init_document(
 
 /// Update text selection for a user in a session
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn collab_update_selection(
     state: State<'_, LazyState<CollabState>>,
     room_id: String,

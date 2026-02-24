@@ -906,8 +906,10 @@ impl CortexSettings {
 
         // Screencast mode
         self.screencast_mode.font_size = self.screencast_mode.font_size.clamp(8, 100);
-        self.screencast_mode.keyboard_overlay_timeout =
-            self.screencast_mode.keyboard_overlay_timeout.clamp(100, 10_000);
+        self.screencast_mode.keyboard_overlay_timeout = self
+            .screencast_mode
+            .keyboard_overlay_timeout
+            .clamp(100, 10_000);
 
         // Command palette
         self.command_palette.history_limit = self.command_palette.history_limit.clamp(1, 1000);
@@ -923,7 +925,14 @@ impl CortexSettings {
             self.editor.line_numbers = "on".to_string();
         }
 
-        let valid_cursor_styles = ["line", "block", "underline", "line-thin", "block-outline", "underline-thin"];
+        let valid_cursor_styles = [
+            "line",
+            "block",
+            "underline",
+            "line-thin",
+            "block-outline",
+            "underline-thin",
+        ];
         if !valid_cursor_styles.contains(&self.editor.cursor_style.as_str()) {
             self.editor.cursor_style = "line".to_string();
         }
@@ -975,8 +984,10 @@ mod tests {
 
     #[test]
     fn migrate_future_version_no_downgrade() {
-        let mut s = CortexSettings::default();
-        s.version = SETTINGS_VERSION + 10;
+        let mut s = CortexSettings {
+            version: SETTINGS_VERSION + 10,
+            ..Default::default()
+        };
         s.migrate();
         assert_eq!(s.version, SETTINGS_VERSION + 10);
     }

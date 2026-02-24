@@ -29,7 +29,7 @@ pub enum DpapiScope {
 /// # Returns
 /// The encrypted data as a byte vector.
 pub fn encrypt(data: &[u8], scope: DpapiScope) -> Result<Vec<u8>> {
-    let mut input_blob = CRYPT_INTEGER_BLOB {
+    let input_blob = CRYPT_INTEGER_BLOB {
         cbData: data.len() as u32,
         pbData: data.as_ptr() as *mut u8,
     };
@@ -47,7 +47,7 @@ pub fn encrypt(data: &[u8], scope: DpapiScope) -> Result<Vec<u8>> {
     // SAFETY: input_blob points to valid data, output_blob is valid output
     let result = unsafe {
         CryptProtectData(
-            &mut input_blob,
+            &input_blob,
             ptr::null(),     // description
             ptr::null_mut(), // optional entropy
             ptr::null_mut(), // reserved
@@ -84,7 +84,7 @@ pub fn encrypt(data: &[u8], scope: DpapiScope) -> Result<Vec<u8>> {
 /// # Returns
 /// The decrypted plaintext data.
 pub fn decrypt(encrypted: &[u8]) -> Result<Vec<u8>> {
-    let mut input_blob = CRYPT_INTEGER_BLOB {
+    let input_blob = CRYPT_INTEGER_BLOB {
         cbData: encrypted.len() as u32,
         pbData: encrypted.as_ptr() as *mut u8,
     };
@@ -97,7 +97,7 @@ pub fn decrypt(encrypted: &[u8]) -> Result<Vec<u8>> {
     // SAFETY: input_blob points to valid data, output_blob is valid output
     let result = unsafe {
         CryptUnprotectData(
-            &mut input_blob,
+            &input_blob,
             ptr::null_mut(), // description output
             ptr::null_mut(), // optional entropy
             ptr::null_mut(), // reserved

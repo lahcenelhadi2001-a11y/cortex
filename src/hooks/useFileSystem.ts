@@ -27,7 +27,7 @@
  */
 
 import { useWorkspaceStore } from "@/store/workspace";
-import type { FileState } from "@/store/workspace";
+import type { FileState, WorkspaceState, WorkspaceActions } from "@/store/workspace";
 import * as tauriApi from "@/lib/tauri-api";
 import { getLanguageFromFilename } from "@/lib/file-icons";
 
@@ -93,8 +93,8 @@ function generateFileId(path: string): string {
  * 3. Revert the store on failure
  */
 export function useFileSystem(): UseFileSystemReturn {
-  const activeFileId = useWorkspaceStore((s) => s.activeFileId);
-  const openFiles = useWorkspaceStore((s) => s.openFiles);
+  const activeFileId = useWorkspaceStore((s: WorkspaceState & WorkspaceActions) => s.activeFileId);
+  const openFiles = useWorkspaceStore((s: WorkspaceState & WorkspaceActions) => s.openFiles);
 
   const getOpenFile = (fileId: string): FileState | undefined => {
     return useWorkspaceStore.getState().openFiles[fileId];

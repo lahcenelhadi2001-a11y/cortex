@@ -62,10 +62,14 @@ pub fn detect_system_locale() -> String {
 
 /// Detect locale on Windows using the Win32 GetUserDefaultLocaleName API.
 #[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
 fn detect_windows_locale() -> Option<String> {
     use windows_sys::Win32::Globalization::GetUserDefaultLocaleName;
 
     let mut buf = [0u16; 85]; // LOCALE_NAME_MAX_LENGTH is 85
+    // SAFETY: `buf` is a valid, stack-allocated buffer of known size and
+    // `GetUserDefaultLocaleName` writes at most `buf.len()` wide chars
+    // including a null terminator.
     let len = unsafe { GetUserDefaultLocaleName(buf.as_mut_ptr(), buf.len() as i32) };
     if len > 0 {
         let locale_str = String::from_utf16_lossy(&buf[..(len as usize).saturating_sub(1)]);

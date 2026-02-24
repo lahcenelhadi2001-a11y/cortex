@@ -141,7 +141,7 @@ pub fn get_process_on_port_impl(port: u16) -> Result<Option<super::types::PortPr
             if parts.len() >= 5 {
                 let local_addr = parts[1];
                 // Check if this is the port we're looking for
-                if let Some(port_str) = local_addr.split(':').last() {
+                if let Some(port_str) = local_addr.split(':').next_back() {
                     if port_str.parse::<u16>().unwrap_or(0) == port {
                         let pid: u32 = parts[4].parse().unwrap_or(0);
                         if pid == 0 {
@@ -179,7 +179,7 @@ pub fn get_process_on_port_impl(port: u16) -> Result<Option<super::types::PortPr
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 4 {
                 let local_addr = parts[1];
-                if let Some(port_str) = local_addr.split(':').last() {
+                if let Some(port_str) = local_addr.split(':').next_back() {
                     if port_str.parse::<u16>().unwrap_or(0) == port {
                         let pid: u32 = parts[3].parse().unwrap_or(0);
                         if pid == 0 {
@@ -342,7 +342,7 @@ pub fn list_listening_ports_impl() -> Result<Vec<super::types::PortProcess>, Str
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 5 {
                 let local_addr = parts[1];
-                if let Some(port_str) = local_addr.split(':').last() {
+                if let Some(port_str) = local_addr.split(':').next_back() {
                     if let Ok(port) = port_str.parse::<u16>() {
                         if seen_ports.contains_key(&port) {
                             continue;

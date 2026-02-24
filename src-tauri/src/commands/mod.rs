@@ -32,6 +32,3 @@
 //! ## Re-exports
 //!
 //! This module re-exports key command-bearing modules for discoverability.
-
-pub use crate::fs_commands::{delete_entry, read_file};
-pub use crate::project::{get_recent_projects, open_project, save_recent_project};

@@ -106,8 +106,7 @@ pub fn set_file_permissions(path: &PathBuf) -> Result<(), String> {
 /// The backup is written to `settings.json.bak` next to the original file.
 pub fn create_backup(path: &PathBuf) -> Result<PathBuf, String> {
     let backup_path = path.with_extension("json.bak");
-    fs::copy(path, &backup_path)
-        .map_err(|e| format!("Failed to create settings backup: {}", e))?;
+    fs::copy(path, &backup_path).map_err(|e| format!("Failed to create settings backup: {}", e))?;
     Ok(backup_path)
 }
 
@@ -335,10 +334,7 @@ mod tests {
 
         let backup_path = create_backup(&path).unwrap();
         assert!(backup_path.exists());
-        assert_eq!(
-            fs::read_to_string(&backup_path).unwrap(),
-            r#"{"broken":}"#
-        );
+        assert_eq!(fs::read_to_string(&backup_path).unwrap(), r#"{"broken":}"#);
 
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(&backup_path);

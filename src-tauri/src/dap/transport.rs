@@ -126,8 +126,8 @@ impl StdioTransport {
             .take()
             .context("Failed to open stdout of debug adapter")?;
 
-        let stderr_task = if let Some(stderr) = process.stderr.take() {
-            Some(tokio::spawn(async move {
+        let stderr_task = process.stderr.take().map(|stderr| {
+            tokio::spawn(async move {
                 let mut reader = TokioBufReader::new(stderr);
                 let mut line = String::new();
                 loop {
@@ -146,10 +146,8 @@ impl StdioTransport {
                         }
                     }
                 }
-            }))
-        } else {
-            None
-        };
+            })
+        });
 
         Ok(Self {
             process,

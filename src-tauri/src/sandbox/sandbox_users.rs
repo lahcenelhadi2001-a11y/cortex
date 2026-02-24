@@ -181,7 +181,7 @@ fn generate_secure_password() -> String {
 }
 
 /// Check if a user exists.
-pub fn user_exists(username: &str) -> bool {
+pub fn user_exists(_username: &str) -> bool {
     // Try to get user info - if it fails, user doesn't exist
     // For simplicity, we'll try to delete and catch the specific error
     // In production, would use NetUserGetInfo

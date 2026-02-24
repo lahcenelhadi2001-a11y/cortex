@@ -119,7 +119,7 @@ pub fn free_security_descriptor(sd: PSECURITY_DESCRIPTOR) {
 /// Check if a path has write access for everyone (world-writable).
 pub fn is_world_writable(path: &Path) -> Result<bool> {
     // Get the DACL
-    let (dacl, sd) = get_dacl(path)?;
+    let (_dacl, sd) = get_dacl(path)?;
 
     // For now, return false as a safe default
     // Full implementation would iterate through ACEs

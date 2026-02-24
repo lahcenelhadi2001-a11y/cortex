@@ -374,7 +374,10 @@ pub async fn testing_run_streaming(
     let run_id_log = run_id_for_log;
     tokio::spawn(async move {
         if let Err(e) = _outer_handle.await {
-            error!("Test execution task for run_id={} panicked: {:?}", run_id_log, e);
+            error!(
+                "Test execution task for run_id={} panicked: {:?}",
+                run_id_log, e
+            );
         }
     });
 

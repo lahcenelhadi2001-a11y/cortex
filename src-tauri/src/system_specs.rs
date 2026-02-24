@@ -135,12 +135,11 @@ fn get_gpu_info() -> Option<String> {
         {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                let gpu_name = stdout
+                stdout
                     .lines()
                     .skip(1)
                     .find(|line| !line.trim().is_empty())
-                    .map(|s| s.trim().to_string());
-                gpu_name
+                    .map(|s| s.trim().to_string())
             }
             Err(_) => None,
         }

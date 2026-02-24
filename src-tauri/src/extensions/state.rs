@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{info, warn};
 
-use super::types::{validate_manifest, Extension, ExtensionManifest, ExtensionSource};
+use super::types::{Extension, ExtensionManifest, ExtensionSource, validate_manifest};
 use super::utils::{copy_dir_recursive, extensions_directory_path};
 #[cfg(feature = "wasm-extensions")]
 use super::wasm::WasmRuntime;

@@ -9,9 +9,9 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use tokio::sync::mpsc;
-use tracing::{error, info};
 #[cfg(windows)]
 use tracing::warn;
+use tracing::{error, info};
 
 use super::types::*;
 

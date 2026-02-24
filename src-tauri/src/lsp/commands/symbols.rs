@@ -3,6 +3,9 @@
 //! Commands for document symbol operations with regex fallback for
 //! when LSP servers don't provide symbol information.
 
+// All LazyLock<Regex> statics use .unwrap() on known-valid compile-time patterns.
+#![allow(clippy::unwrap_used)]
+
 use std::sync::LazyLock;
 
 use regex::Regex;

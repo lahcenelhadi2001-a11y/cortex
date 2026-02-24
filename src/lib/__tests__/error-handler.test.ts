@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { initGlobalErrorHandler } from "../error-handler";
 
+type NotifyFn = Parameters<typeof initGlobalErrorHandler>[0]["notify"];
+type AppendLineFn = Parameters<typeof initGlobalErrorHandler>[0]["appendLine"];
+
 describe("initGlobalErrorHandler", () => {
-  let notify: ReturnType<typeof vi.fn>;
-  let appendLine: ReturnType<typeof vi.fn>;
+  let notify: ReturnType<typeof vi.fn> & NotifyFn;
+  let appendLine: ReturnType<typeof vi.fn> & AppendLineFn;
   let cleanup: () => void;
 
   beforeEach(() => {
-    notify = vi.fn();
-    appendLine = vi.fn();
+    notify = vi.fn() as ReturnType<typeof vi.fn> & NotifyFn;
+    appendLine = vi.fn() as ReturnType<typeof vi.fn> & AppendLineFn;
     cleanup = initGlobalErrorHandler({ notify, appendLine });
   });
 

@@ -44,7 +44,10 @@ pub async fn debug_start_session(
     });
     tokio::spawn(async move {
         if let Err(e) = _event_fwd.await {
-            error!("Debug event forwarder for session {} panicked: {:?}", sid_for_log, e);
+            error!(
+                "Debug event forwarder for session {} panicked: {:?}",
+                sid_for_log, e
+            );
         }
     });
 
@@ -79,7 +82,10 @@ pub async fn debug_start_session(
     });
     tokio::spawn(async move {
         if let Err(e) = _evt_handle.await {
-            error!("Debug event processor for session {} panicked: {:?}", sid_for_evt, e);
+            error!(
+                "Debug event processor for session {} panicked: {:?}",
+                sid_for_evt, e
+            );
         }
     });
 

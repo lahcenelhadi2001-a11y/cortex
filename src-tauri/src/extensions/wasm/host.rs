@@ -1211,9 +1211,7 @@ pub fn host_register_diagnostic(uri: &str, diagnostics: &str) {
         diagnostics: diagnostics.to_string(),
     };
 
-    let mut registry = DIAGNOSTICS
-        .lock()
-        .unwrap_or_else(|e| e.into_inner());
+    let mut registry = DIAGNOSTICS.lock().unwrap_or_else(|e| e.into_inner());
     registry.retain(|d| d.uri != uri);
     registry.push(entry);
 

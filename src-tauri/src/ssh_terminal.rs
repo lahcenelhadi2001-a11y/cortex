@@ -328,7 +328,11 @@ impl SSHTerminalState {
                     flow_controller_clone,
                 );
             })) {
-                tracing::error!("SSH terminal reader thread for '{}' panicked: {:?}", sid_for_log, e);
+                tracing::error!(
+                    "SSH terminal reader thread for '{}' panicked: {:?}",
+                    sid_for_log,
+                    e
+                );
             }
         });
 

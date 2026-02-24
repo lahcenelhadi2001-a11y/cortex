@@ -127,11 +127,7 @@ impl NodeHostProcess {
         drop(self.stdin.lock().await);
 
         // Wait up to 5 seconds for the process to exit gracefully
-        let graceful = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            child.wait(),
-        )
-        .await;
+        let graceful = tokio::time::timeout(std::time::Duration::from_secs(5), child.wait()).await;
 
         match graceful {
             Ok(Ok(_)) => {

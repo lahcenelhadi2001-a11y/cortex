@@ -6,9 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 
-// Re-export core file system types from the fs module
-pub use crate::fs::types::{FileEntry, FileMetadata};
-
 /// File content returned by `read_file`, including encoding metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
