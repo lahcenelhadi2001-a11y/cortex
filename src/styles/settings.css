@@ -846,3 +846,17 @@
 .setting-item-contents.is-modified:hover {
   background-color: rgba(var(--cortex-primary-rgb, 99, 102, 241), 0.05);
 }
+
+/* ==========================================================================
+   Settings Dialog Responsive Styles
+   ========================================================================== */
+@media (max-width: 900px) {
+  .settings-editor {
+    min-width: 0 !important;
+  }
+
+  .settings-editor .settings-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

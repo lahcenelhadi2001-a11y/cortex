@@ -21,6 +21,7 @@ export interface CortexSettingsPanelProps {
   initialJsonView?: boolean;
   initialShowDefaults?: boolean;
   initialSection?: string;
+  scope?: import("@/context/SettingsContext").SettingsScope;
 }
 
 export function CortexSettingsPanel(props: CortexSettingsPanelProps) {
@@ -141,9 +142,9 @@ export function CortexSettingsPanel(props: CortexSettingsPanelProps) {
         >
           <Show
             when={!showJsonView()}
-            fallback={<JsonSettingsEditor initialScope="user" />}
+            fallback={<JsonSettingsEditor initialScope={props.scope ?? "user"} />}
           >
-            <SettingsEditor />
+            <SettingsEditor initialScope={props.scope} />
           </Show>
         </Suspense>
       </div>

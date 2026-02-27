@@ -570,10 +570,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!props.isOpen) return;
-
     // Escape key closes dialog
     if (e.key === "Escape") {
       e.preventDefault();
+      if (showJsonView() && jsonViewDirty()) {
+        if (!window.confirm("You have unsaved changes in the JSON editor. Close anyway? Changes will be lost.")) return;
+      }
       props.onClose();
       return;
     }
@@ -680,9 +682,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
               "padding-bottom": "16px",
               "border-bottom": "1px solid var(--jb-border-default)",
               "background": "var(--jb-panel)",
+              "flex-wrap": "wrap",
+              "gap": "8px",
             }}>
-            <div class="flex items-center gap-4">
-              <Text as="h2" size="lg" weight="semibold" style={{ color: "var(--jb-text-body-color)" }}>Settings</Text>
+            <div class="flex items-center gap-4" style={{ "flex-wrap": "wrap", "min-width": "0" }}>
+              <Text as="h2" size="lg" weight="semibold" style={{ color: "var(--jb-text-body-color)", "white-space": "nowrap", "flex-shrink": "0" }}>Settings</Text>
               
               {/* Settings Scope Toggle */}
               <div style={{
@@ -869,6 +873,46 @@ export function SettingsDialog(props: SettingsDialogProps) {
             </div>
           </div>
 
+          {/* Active Modified Filter Chip */}
+          <Show when={showModifiedOnly()}>
+            <div style={{
+              display: "flex",
+              "align-items": "center",
+              gap: "6px",
+              padding: "6px 24px",
+              "border-bottom": "1px solid var(--jb-border-default)",
+              "flex-wrap": "wrap",
+            }}>
+              <div style={{
+                display: "flex",
+                "align-items": "center",
+                gap: "4px",
+                padding: "2px 8px",
+                background: "rgba(234, 179, 8, 0.2)",
+                border: "1px solid rgba(234, 179, 8, 0.4)",
+                "border-radius": "var(--cortex-radius-sm, 6px)",
+                "font-size": "11px",
+                color: "var(--cortex-warning)",
+              }}>
+                <span>@modified</span>
+                <button
+                  onClick={() => setShowModifiedOnly(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0",
+                    display: "flex",
+                    "align-items": "center",
+                    color: "var(--cortex-warning)",
+                  }}
+                >
+                  <Icon name="xmark" style={{ width: "12px", height: "12px" }} />
+                </button>
+              </div>
+            </div>
+          </Show>
+
           {/* Workspace Info Banner */}
           <Show when={settingsScope() === "workspace" && hasWorkspace()}>
             <div style={{
@@ -928,8 +972,10 @@ export function SettingsDialog(props: SettingsDialogProps) {
             {/* Sidebar */}
             <div style={{
               width: "256px",
+              "min-width": "200px",
               "border-right": "1px solid var(--jb-border-default)",
               "overflow-y": "auto",
+              "overflow-x": "auto",
               padding: "8px",
               "flex-shrink": "0",
               background: "var(--jb-panel)",

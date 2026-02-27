@@ -2318,11 +2318,25 @@ export function SettingsEditor(props: SettingsEditorProps) {
         </div>
 
         {/* Active filters display */}
-        <Show when={parsedQuery().filters.length > 0}>
+        <Show when={parsedQuery().filters.length > 0 || showModifiedOnly()}>
           <ActiveFiltersDisplay
-            filters={parsedQuery().filters}
-            onRemoveFilter={handleRemoveFilter}
-            onClearAll={handleClearAllFilters}
+            filters={showModifiedOnly() && !parsedQuery().filters.some(f => f.type === "modified")
+              ? [...parsedQuery().filters, { type: "modified" as SearchFilterType }]
+              : parsedQuery().filters}
+            onRemoveFilter={(index) => {
+              const allFilters = showModifiedOnly() && !parsedQuery().filters.some(f => f.type === "modified")
+                ? [...parsedQuery().filters, { type: "modified" as SearchFilterType }]
+                : parsedQuery().filters;
+              if (allFilters[index]?.type === "modified" && !parsedQuery().filters.some(f => f.type === "modified")) {
+                setShowModifiedOnly(false);
+              } else {
+                handleRemoveFilter(index);
+              }
+            }}
+            onClearAll={() => {
+              setShowModifiedOnly(false);
+              handleClearAllFilters();
+            }}
           />
         </Show>
       </div>
