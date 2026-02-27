@@ -152,7 +152,7 @@ describe("CortexActivityBar", () => {
       ));
       const button = container.querySelector('nav button[aria-label="A"]');
       expect(button).toBeTruthy();
-      expect((button as HTMLElement).style.background).toBe("rgb(191, 255, 0)");
+      expect((button as HTMLElement).style.background).toBe("var(--cortex-accent-primary)");
     });
   });
 
@@ -453,7 +453,7 @@ describe("CortexActivityBar", () => {
       const button = container.querySelector('nav button[aria-label="Home"]');
       const html = button!.innerHTML;
       expect(html).toContain("9px");
-      expect(html).toContain("BFFF00");
+      expect(html).toContain("var(--cortex-accent-primary)");
       expect(button!.textContent).toContain("3");
     });
   });
