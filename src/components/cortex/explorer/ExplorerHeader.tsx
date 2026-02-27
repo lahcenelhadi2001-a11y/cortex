@@ -50,7 +50,7 @@ export const ExplorerHeader: Component<ExplorerHeaderProps> = (props) => {
     "font-size": "14px",
     "font-weight": "500",
     "line-height": "1em",
-    color: isActive ? "#E9E9EA" : "#8C8D8F",
+    color: isActive ? "var(--cortex-text-primary)" : "var(--cortex-text-secondary)",
     "white-space": "nowrap",
   });
 
@@ -59,7 +59,7 @@ export const ExplorerHeader: Component<ExplorerHeaderProps> = (props) => {
     "font-size": "14px",
     "font-weight": "500",
     "line-height": "1em",
-    background: "linear-gradient(90deg, #8C8D8F 0%, #FCFCFC 100%)",
+    background: "linear-gradient(90deg, var(--cortex-text-secondary) 0%, var(--cortex-text-primary) 100%)",
     "-webkit-background-clip": "text",
     "-webkit-text-fill-color": "transparent",
     "background-clip": "text",
@@ -75,7 +75,7 @@ export const ExplorerHeader: Component<ExplorerHeaderProps> = (props) => {
         aria-selected={activeTab() === "explorer"}
         role="tab"
       >
-        <CortexIcon name="folder" size={16} color={activeTab() === "explorer" ? "#E9E9EA" : "#8C8D8F"} />
+        <CortexIcon name="folder" size={16} color={activeTab() === "explorer" ? "var(--cortex-text-primary)" : "var(--cortex-text-secondary)"} />
         <span style={tabTextStyle(activeTab() === "explorer")}>Explorer</span>
       </button>
 
@@ -86,7 +86,7 @@ export const ExplorerHeader: Component<ExplorerHeaderProps> = (props) => {
         aria-selected={activeTab() === "ai-terminal"}
         role="tab"
       >
-        <CortexIcon name="star" size={16} color="#FFFFFF" />
+        <CortexIcon name="star" size={16} color="var(--cortex-text-primary)" />
         <span style={activeTab() === "ai-terminal" ? tabTextStyle(true) : gradientTextStyle()}>
           AI Terminal
         </span>

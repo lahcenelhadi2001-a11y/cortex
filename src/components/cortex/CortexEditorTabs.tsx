@@ -267,7 +267,7 @@ const EditorTabItem: Component<EditorTabItemProps> = (props) => {
     gap: "6px",
     height: "36px",
     padding: "10px 16px",
-    background: props.isActive ? "#252628" : "transparent",
+    background: props.isActive ? "var(--cortex-bg-elevated)" : "transparent",
     "border-top-left-radius": "8px",
     "border-top-right-radius": "8px",
     cursor: "pointer",
@@ -281,7 +281,7 @@ const EditorTabItem: Component<EditorTabItemProps> = (props) => {
     "font-size": "14px",
     "font-weight": "400",
     "line-height": "1em",
-    color: props.isActive ? "#FCFCFC" : "#8C8D8F",
+    color: props.isActive ? "var(--cortex-text-primary)" : "var(--cortex-text-secondary)",
     "white-space": "nowrap",
     "font-style": props.tab.isPreview ? "italic" : "normal",
   });

@@ -235,7 +235,7 @@ describe("CortexActivityBar", () => {
       expect(avatarButton).toBeTruthy();
       const html = avatarButton!.innerHTML;
       expect(html).toContain("6px");
-      expect(html).toContain("34D399");
+      expect(html).toContain("var(--cortex-palette-success-400)");
     });
   });
 

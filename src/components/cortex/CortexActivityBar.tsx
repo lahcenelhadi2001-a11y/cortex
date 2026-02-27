@@ -234,7 +234,7 @@ const ActivityBarSettingsButton: Component<{ onClick?: () => void }> = (props) =
         <CortexIcon
           name="settings-02"
           size={20}
-          color={isHovered() ? "#FCFCFC" : "#8C8D8F"}
+          color={isHovered() ? "var(--cortex-text-primary)" : "var(--cortex-icon-inactive)"}
           style={{ transition: "color var(--cortex-transition-fast)" }}
         />
       </button>
@@ -255,7 +255,7 @@ const AvatarButton: Component<{ avatarUrl?: string; onClick?: () => void }> = (p
           "border-radius": "var(--cortex-radius-full)",
           background: "var(--cortex-bg-tertiary)",
           border: isHovered()
-            ? "2px solid #BFFF00"
+            ? "2px solid var(--cortex-accent-primary)"
             : "2px solid transparent",
           cursor: "pointer",
           display: "flex",
@@ -276,7 +276,7 @@ const AvatarButton: Component<{ avatarUrl?: string; onClick?: () => void }> = (p
             <CortexIcon
               name="user"
               size={14}
-              color="#8C8D8F"
+              color="var(--cortex-icon-inactive)"
             />
           }
         >
@@ -298,7 +298,7 @@ const AvatarButton: Component<{ avatarUrl?: string; onClick?: () => void }> = (p
           width: "6px",
           height: "6px",
           "border-radius": "var(--cortex-radius-full)",
-          background: "#34D399",
+          background: "var(--cortex-palette-success-400)",
           border: "1px solid var(--cortex-sidebar-bg)",
         }} />
       </button>
