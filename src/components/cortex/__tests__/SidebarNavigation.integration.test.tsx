@@ -122,8 +122,8 @@ const NAV_ITEMS: ActivityBarItem[] = [
   { id: "plugins", icon: "plugins", label: "Plugins" },
   { id: "agents", icon: "users", label: "AI Agents" },
   { id: "extensions", icon: "grid", label: "Extensions" },
-  { id: "docs", icon: "book", label: "Documentation" },
   { id: "themes", icon: "brush", label: "Themes" },
+  { id: "docs", icon: "book", label: "Documentation" },
 ];
 
 function SidebarIntegrationWrapper(props: { initialTab?: SidebarTab; initialCollapsed?: boolean }) {
@@ -304,19 +304,6 @@ describe("SidebarNavigation Integration", () => {
       expect(panel.textContent).toContain("Plugins Panel");
     });
 
-    it("clicking 'docs' shows documentation panel", async () => {
-      const { container, findByTestId } = render(() => <SidebarIntegrationWrapper />);
-
-      const docsButton = container.querySelector('button[aria-label="Documentation"]');
-      expect(docsButton).toBeTruthy();
-
-      await fireEvent.click(docsButton!);
-
-      const panel = await findByTestId("panel-docs");
-      expect(panel).toBeTruthy();
-      expect(panel.textContent).toContain("Documentation Panel");
-    });
-
     it("clicking 'account' shows account panel", async () => {
       const { container, findByTestId } = render(() => <SidebarIntegrationWrapper />);
 
@@ -328,6 +315,19 @@ describe("SidebarNavigation Integration", () => {
       const panel = await findByTestId("panel-account");
       expect(panel).toBeTruthy();
       expect(panel.textContent).toContain("Account Panel");
+    });
+
+    it("clicking 'docs' shows documentation panel", async () => {
+      const { container, findByTestId } = render(() => <SidebarIntegrationWrapper />);
+
+      const docsButton = container.querySelector('button[aria-label="Documentation"]');
+      expect(docsButton).toBeTruthy();
+
+      await fireEvent.click(docsButton!);
+
+      const panel = await findByTestId("panel-docs");
+      expect(panel).toBeTruthy();
+      expect(panel.textContent).toContain("Documentation Panel");
     });
   });
 
