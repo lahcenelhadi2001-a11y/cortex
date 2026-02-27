@@ -7,6 +7,7 @@ import type { VirtualItemProps } from "./types";
 export function VirtualItem(props: VirtualItemProps) {
   const [renameValue, setRenameValue] = createSignal("");
   let inputRef: HTMLInputElement | undefined;
+  let renameCancelled = false;
   
   const isFocused = () => props.focusedPath === props.item.entry.path;
   const isRenaming = () => props.renamingPath === props.item.entry.path;
@@ -35,6 +36,7 @@ export function VirtualItem(props: VirtualItemProps) {
   
   createEffect(() => {
     if (isRenaming()) {
+      renameCancelled = false;
       setRenameValue(props.item.entry.name);
       setTimeout(() => {
         inputRef?.focus();
@@ -105,6 +107,7 @@ export function VirtualItem(props: VirtualItemProps) {
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
+        renameCancelled = true;
         props.onRename(props.item.entry.path, props.item.entry.name);
       }
       return;
@@ -269,6 +272,10 @@ export function VirtualItem(props: VirtualItemProps) {
             onInput={(e) => setRenameValue(e.currentTarget.value)}
             onKeyDown={handleKeyDown}
             onBlur={() => {
+              if (renameCancelled) {
+                renameCancelled = false;
+                return;
+              }
               if (renameError()) {
                 props.onRename(props.item.entry.path, props.item.entry.name);
               } else {

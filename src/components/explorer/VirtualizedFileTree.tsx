@@ -54,24 +54,19 @@ export function VirtualizedFileTree(props: VirtualizedFileTreeProps) {
               style={{ transform: `translateY(${tree.offsetY()}px)` }}
             >
               <For each={tree.visibleItems()}>
-                {(item) => {
-                  const gitDecoration = tree.gitDecorationsMap().get(item.id);
-                  const isEntering = item.parentPath !== null && tree.recentlyExpandedPaths().has(item.parentPath);
-                  const isSelected = tree.selectedPathsSet().has(item.entry.path);
-
-                  return (
+                {(item) => (
                     <VirtualItem
                       item={item}
-                      isSelected={isSelected}
+                      isSelected={tree.selectedPathsSet().has(item.entry.path)}
                       focusedPath={tree.focusedPath()}
                       renamingPath={tree.renamingPath()}
                       dragOverPath={tree.dragOverPath()}
                       isDragCopy={tree.isDragCopy()}
                       isCut={tree.isCutFile(item.entry.path)}
-                      gitDecoration={gitDecoration}
+                      gitDecoration={tree.gitDecorationsMap().get(item.id)}
                       indentGuidesEnabled={props.indentGuidesEnabled}
                       enablePreview={props.enablePreview}
-                      isEntering={isEntering}
+                      isEntering={item.parentPath !== null && tree.recentlyExpandedPaths().has(item.parentPath)}
                       onSelect={tree.handleSelect}
                       onOpen={tree.handleOpen}
                       onOpenPreview={tree.handleOpenPreview}
@@ -86,8 +81,7 @@ export function VirtualizedFileTree(props: VirtualizedFileTreeProps) {
                       onDrop={tree.handleDrop}
                       onFocus={tree.setFocusedPath}
                     />
-                  );
-                }}
+                )}
               </For>
               
               <Show when={tree.loadingDirs().size > 0}>

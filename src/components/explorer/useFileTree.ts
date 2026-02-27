@@ -956,11 +956,21 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
         break;
 
       case "cut":
-        setClipboardFiles({ paths: [entry.path], operation: 'cut' });
+        {
+          const pathsToCut = props.selectedPaths.length > 1 && props.selectedPaths.includes(entry.path)
+            ? [...props.selectedPaths]
+            : [entry.path];
+          setClipboardFiles({ paths: pathsToCut, operation: 'cut' });
+        }
         break;
 
       case "copy":
-        setClipboardFiles({ paths: [entry.path], operation: 'copy' });
+        {
+          const pathsToCopy = props.selectedPaths.length > 1 && props.selectedPaths.includes(entry.path)
+            ? [...props.selectedPaths]
+            : [entry.path];
+          setClipboardFiles({ paths: pathsToCopy, operation: 'copy' });
+        }
         break;
 
       case "paste":
