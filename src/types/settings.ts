@@ -757,6 +757,77 @@ export interface ExtensionsSettings {
 }
 
 // ============================================================================
+// Command Palette Settings
+// ============================================================================
+
+/**
+ * Command Palette / Quick Access settings.
+ */
+export interface CommandPaletteSettings {
+  /** Number of history items to remember per provider (default 50, max 200) */
+  historyLength: number;
+  /** Preserve input when reopening the palette */
+  preserveInput: boolean;
+}
+
+// ============================================================================
+// Workbench Settings
+// ============================================================================
+
+/**
+ * Tab sizing mode for workbench editor.
+ */
+export type TabSizingMode = "fit" | "shrink" | "fixed";
+
+/**
+ * Tab close button visibility.
+ */
+export type TabCloseButtonVisibility = "always" | "onHover" | "never";
+
+/**
+ * Tab close button position.
+ */
+export type TabCloseButtonPosition = "left" | "right";
+
+/**
+ * Centered editor layout settings.
+ */
+export interface CenteredLayoutSettings {
+  /** Enable centered layout */
+  enabled: boolean;
+  /** Maximum width of the centered content area (CSS value) */
+  maxWidth: string;
+}
+
+/**
+ * Workbench editor settings for tab behavior.
+ */
+export interface WorkbenchEditorSettings {
+  /** Tab sizing mode */
+  tabSizing: TabSizingMode;
+  /** Minimum width for tabs in shrink mode (pixels) */
+  tabSizingFixedMinWidth: number;
+  /** Fixed width for tabs in fixed mode (pixels) */
+  tabSizingFixedWidth: number;
+  /** Whether to wrap tabs to multiple rows */
+  wrapTabs: boolean;
+  /** When to show the tab close button */
+  showTabCloseButton: TabCloseButtonVisibility;
+  /** Position of the tab close button */
+  tabCloseButtonPosition: TabCloseButtonPosition;
+  /** Centered editor layout settings */
+  centeredLayout: CenteredLayoutSettings;
+}
+
+/**
+ * Workbench settings container.
+ */
+export interface WorkbenchSettings {
+  /** Editor tab/layout settings */
+  editor: WorkbenchEditorSettings;
+}
+
+// ============================================================================
 // Composite Settings Types
 // ============================================================================
 
@@ -800,6 +871,10 @@ export interface CortexSettings {
   http: HttpSettings;
   /** SSH settings */
   ssh: SSHSettings;
+  /** Command palette settings */
+  commandPalette: CommandPaletteSettings;
+  /** Workbench settings (tabs, layout, etc.) */
+  workbench: WorkbenchSettings;
 }
 
 /**
