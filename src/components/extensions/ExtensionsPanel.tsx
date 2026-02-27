@@ -71,7 +71,7 @@ export const ExtensionsPanel: Component<ExtensionsPanelProps> = (props) => {
       return [];
     }
 
-    let exts = extensions();
+    let exts = extensions() || [];
     const query = searchQuery().toLowerCase();
 
     // Apply text search
@@ -204,7 +204,7 @@ export const ExtensionsPanel: Component<ExtensionsPanelProps> = (props) => {
           <h2 style={{ margin: 0, "font-size": "16px", "font-weight": 600 }}>
             Extensions
           </h2>
-          <Badge size="md">{extensions().length}</Badge>
+          <Badge size="md">{(extensions() || []).length}</Badge>
           {/* Updates available badge */}
           <Show when={outdatedCount() > 0}>
             <div 

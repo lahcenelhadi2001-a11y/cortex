@@ -70,8 +70,8 @@ export const ExtensionProfiler: Component<ExtensionProfilerProps> = (props) => {
 
   // Build profiles from runtime state
   const buildProfiles = (): ExtensionProfile[] => {
-    const runtimeStates = runtime.extensions();
-    const enabledExts = enabledExtensions();
+    const runtimeStates = runtime.extensions() || [];
+    const enabledExts = enabledExtensions() || [];
 
     return runtimeStates.map((state) => {
       const ext = enabledExts.find((e) => e.manifest.name === state.id);

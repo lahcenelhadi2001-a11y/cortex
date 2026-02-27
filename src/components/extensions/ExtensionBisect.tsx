@@ -40,7 +40,7 @@ export const ExtensionBisect: Component<ExtensionBisectProps> = (props) => {
   // Get the found extension details
   const foundExtensionDetails = createMemo(() => {
     if (!state.foundExtension) return null;
-    return extensions.extensions().find(
+    return (extensions.extensions() || []).find(
       e => e.manifest.name === state.foundExtension
     );
   });
