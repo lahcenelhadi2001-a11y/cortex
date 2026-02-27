@@ -345,6 +345,7 @@
   --jb-border-default: var(--border-default);
   --jb-border-focus: var(--border-focus);
   --jb-border-error: var(--border-error);
+  --jb-border-divider: var(--border-default);
   
   --jb-text-body-color: var(--text-primary);
   --jb-text-secondary-color: var(--text-secondary);
@@ -359,6 +360,8 @@
   --jb-radius-md: var(--radius-md);
   --jb-radius-lg: var(--radius-lg);
   --jb-text-body-size: var(--text-base);
+  --jb-text-muted-size: var(--text-xs);
+  --jb-text-muted-weight: var(--font-normal);
   --jb-icon-color-default: var(--text-muted);
   --jb-icon-color-inactive: var(--text-disabled);
   --jb-icon-color-active: var(--text-title);
