@@ -12,6 +12,7 @@ import { ConflictResolver, type ResolvedConflict } from "./ConflictResolver";
 import { useMultiRepo, type GitFile } from "@/context/MultiRepoContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useGitMerge } from "@/context/GitMergeContext";
+import { useToast } from "@/context/ToastContext";
 import { gitLog, gitDiff, gitSubmoduleList, gitSubmoduleInit, gitSubmoduleUpdate, gitIsGpgConfigured, gitInit, gitTagList, gitMergeContinue, type SubmoduleInfo } from "../../utils/tauri-api";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
@@ -62,6 +63,7 @@ export function GitPanel() {
   const settings = useSettings();
   const workspace = useWorkspace();
   const gitMerge = useGitMerge();
+  const toast = useToast();
 
   // Git settings from SettingsContext
   const gitSettings = () => settings.effectiveSettings().git;
@@ -85,7 +87,7 @@ export function GitPanel() {
   const [pendingDeleteBranch, setPendingDeleteBranch] = createSignal<string | null>(null);
   const [submodules, setSubmodules] = createSignal<SubmoduleInfo[]>([]);
   const [submodulesLoading, setSubmodulesLoading] = createSignal(false);
-const [signCommits, setSignCommits] = createSignal(false);
+  const [signCommits, setSignCommits] = createSignal(false);
   const [gpgConfigured, setGpgConfigured] = createSignal(false);
   const [tagCount, setTagCount] = createSignal(0);
   const [compareBranch, setCompareBranch] = createSignal<string | null>(null);
@@ -97,6 +99,10 @@ const [signCommits, setSignCommits] = createSignal(false);
   const [mergeSourceBranch, setMergeSourceBranch] = createSignal<string | null>(null);
   const [mergeLoading, setMergeLoading] = createSignal(false);
   const [mergeError, setMergeError] = createSignal<string | null>(null);
+
+
+
+
 
   // Commit message validation settings (defaults as per conventional commit guidelines)
   const INPUT_VALIDATION_SUBJECT_LENGTH = 50;
@@ -627,8 +633,9 @@ const [signCommits, setSignCommits] = createSignal(false);
       await multiRepo.checkout(repo.id, branchName);
       setBranchFilter("");
       setShowBranchSelector(false);
+      toast.success(`Switched to branch '${branchName}'`);
     } catch (err) {
-      showError("Failed to checkout branch");
+      toast.error("Failed to checkout branch");
       console.error("Failed to checkout:", err);
     } finally {
       setOperationLoading(null);
@@ -689,8 +696,9 @@ const [signCommits, setSignCommits] = createSignal(false);
       await multiRepo.createBranch(repo.id, name, checkoutAfter);
       setBranchFilter("");
       setShowBranchSelector(false);
+      toast.success(`Created branch '${name}'`);
     } catch (err) {
-      showError("Failed to create branch");
+      toast.error("Failed to create branch");
       console.error("Failed to create branch:", err);
     } finally {
       setOperationLoading(null);
@@ -704,8 +712,9 @@ const [signCommits, setSignCommits] = createSignal(false);
     setOperationLoading("delete-branch");
     try {
       await multiRepo.deleteBranch(repo.id, name, force);
+      toast.success(`Deleted branch '${name}'`);
     } catch (err) {
-      showError("Failed to delete branch");
+      toast.error("Failed to delete branch");
       console.error("Failed to delete branch:", err);
     } finally {
       setOperationLoading(null);
@@ -730,9 +739,10 @@ const [signCommits, setSignCommits] = createSignal(false);
     try {
       const result = await multiRepo.mergeBranch(repo.id, branchName);
       if (result.hasConflicts) {
-        showError("Merge completed with conflicts - resolve them before committing", "warning");
+        toast.warning("Merge completed with conflicts - resolve them before committing");
         gitMerge.loadConflicts();
       } else {
+        toast.success(`Merged '${branchName}' into '${branch() || "current branch"}'`);
         setMergeBranchTarget(null);
       }
       batch(() => {
@@ -742,7 +752,7 @@ const [signCommits, setSignCommits] = createSignal(false);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       setMergeError(errMsg);
-      showError("Failed to merge branch");
+      toast.error("Failed to merge branch");
       console.error("Failed to merge branch:", err);
       setMergeBranchTarget(null);
     } finally {
@@ -850,6 +860,10 @@ const [signCommits, setSignCommits] = createSignal(false);
         console.error("Failed to load file for merge editor:", err);
       }
     }
+  };
+
+  const confirmDeleteBranch = (name: string) => {
+    setPendingDeleteBranch(name);
   };
 
   // Cross-repo operations
@@ -1523,7 +1537,7 @@ const [signCommits, setSignCommits] = createSignal(false);
             onClick={() => setShowCreateBranch(true)}
             style={{ "border-bottom": `1px solid ${tokens.colors.border.divider}` }}
           />
-          
+
           {/* Create branch input */}
           <Show when={showCreateBranch()}>
             <div style={{ padding: `${tokens.spacing.md} ${tokens.spacing.lg}`, "border-bottom": `1px solid ${tokens.colors.border.divider}` }}>
@@ -1604,7 +1618,7 @@ const [signCommits, setSignCommits] = createSignal(false);
                   }
                   label={b.name}
                   selected={b.current}
-                  onClick={() => { if (!b.current) { checkout(b.name); setShowBranchSelector(false); } }}
+                  onClick={() => { if (!b.current) { checkout(b.name); } }}
                   disabled={operationLoading() === "checkout" || b.current}
                   iconRight={
                     <div style={{ display: "flex", "align-items": "center", gap: tokens.spacing.sm }}>
@@ -1631,10 +1645,7 @@ const [signCommits, setSignCommits] = createSignal(false);
                         <IconButton
                           size="sm"
                           tooltip={`Delete ${b.name}`}
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setPendingDeleteBranch(b.name);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); confirmDeleteBranch(b.name); }}
                         >
                           <Icon name="trash" size={12} style={{ color: tokens.colors.semantic.error }} />
                         </IconButton>

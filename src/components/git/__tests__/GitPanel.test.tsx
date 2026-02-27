@@ -238,6 +238,34 @@ vi.mock("../WorktreeManager", () => ({
   },
 }));
 
+vi.mock("../DeleteBranchDialog", () => ({
+  DeleteBranchDialog: () => {
+    const el = document.createElement("div");
+    el.setAttribute("data-testid", "delete-branch-dialog");
+    return el;
+  },
+}));
+
+vi.mock("../MergeBranchDialog", () => ({
+  MergeBranchDialog: () => {
+    const el = document.createElement("div");
+    el.setAttribute("data-testid", "merge-branch-dialog");
+    return el;
+  },
+}));
+
+vi.mock("@/context/ToastContext", () => ({
+  useToast: () => ({
+    show: vi.fn(),
+    dismiss: vi.fn(),
+    dismissAll: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  }),
+}));
+
 describe("GitPanel", () => {
   afterEach(() => {
     cleanup();
