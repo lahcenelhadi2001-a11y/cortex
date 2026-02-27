@@ -1107,6 +1107,65 @@ function deepMerge<T extends object>(target: T, source: Partial<T> | PartialCort
   return result;
 }
 
+/**
+ * Count the number of leaf-level differences between two values.
+ * Recursively walks nested objects (excluding arrays) and counts
+ * each primitive/array field that differs.
+ */
+function countDeepDifferences(current: unknown, defaultVal: unknown): number {
+  if (current === defaultVal) return 0;
+  if (current === null || current === undefined || defaultVal === null || defaultVal === undefined) {
+    return current === defaultVal ? 0 : 1;
+  }
+  if (typeof current !== "object" || typeof defaultVal !== "object") {
+    return current === defaultVal ? 0 : 1;
+  }
+  if (Array.isArray(current) || Array.isArray(defaultVal)) {
+    return JSON.stringify(current) === JSON.stringify(defaultVal) ? 0 : 1;
+  }
+  const currentObj = current as Record<string, unknown>;
+  const defaultObj = defaultVal as Record<string, unknown>;
+  const allKeys = new Set([...Object.keys(currentObj), ...Object.keys(defaultObj)]);
+  let count = 0;
+  for (const key of allKeys) {
+    count += countDeepDifferences(currentObj[key], defaultObj[key]);
+  }
+  return count;
+}
+
+/**
+ * Collect all leaf-level differences between two values.
+ * Returns an array of { key, currentValue, defaultValue } with dot-notation paths.
+ */
+function collectDeepDifferences(
+  current: unknown,
+  defaultVal: unknown,
+  prefix: string,
+  results: Array<{ key: string; currentValue: unknown; defaultValue: unknown }>
+): void {
+  if (current === defaultVal) return;
+  if (current === null || current === undefined || defaultVal === null || defaultVal === undefined) {
+    if (current !== defaultVal) results.push({ key: prefix, currentValue: current, defaultValue: defaultVal });
+    return;
+  }
+  if (typeof current !== "object" || typeof defaultVal !== "object") {
+    if (current !== defaultVal) results.push({ key: prefix, currentValue: current, defaultValue: defaultVal });
+    return;
+  }
+  if (Array.isArray(current) || Array.isArray(defaultVal)) {
+    if (JSON.stringify(current) !== JSON.stringify(defaultVal)) {
+      results.push({ key: prefix, currentValue: current, defaultValue: defaultVal });
+    }
+    return;
+  }
+  const currentObj = current as Record<string, unknown>;
+  const defaultObj = defaultVal as Record<string, unknown>;
+  const allKeys = new Set([...Object.keys(currentObj), ...Object.keys(defaultObj)]);
+  for (const key of allKeys) {
+    collectDeepDifferences(currentObj[key], defaultObj[key], prefix ? `${prefix}.${key}` : key, results);
+  }
+}
+
 function matchGlobPattern(filename: string, pattern: string): boolean {
   const regex = new RegExp("^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, ".*").replace(/\*/g, "[^/]*").replace(/\?/g, ".") + "$", "i");
   return regex.test(filename);
@@ -1560,19 +1619,13 @@ const updateCommandPaletteSetting = async <K extends keyof CommandPaletteSetting
     if (!es || !ds) return false;
     const cv = (es as Record<string, unknown>)[key as string];
     const dv = (ds as Record<string, unknown>)[key as string];
-    return JSON.stringify(cv) !== JSON.stringify(dv);
+    return countDeepDifferences(cv, dv) > 0;
   };
 
   const getModifiedCountForSection = (section: keyof CortexSettings): number => {
     const es = effectiveSettings()[section], ds = DEFAULT_SETTINGS[section];
     if (!es || !ds || typeof es !== "object") return 0;
-    let count = 0;
-    for (const k of Object.keys(ds)) {
-      const cv = (es as Record<string, unknown>)[k];
-      const dv = (ds as Record<string, unknown>)[k];
-      if (JSON.stringify(cv) !== JSON.stringify(dv)) count++;
-    }
-    return count;
+    return countDeepDifferences(es, ds);
   };
 
   const getAllModifiedSettings = () => {
@@ -1581,10 +1634,10 @@ const updateCommandPaletteSetting = async <K extends keyof CommandPaletteSetting
     for (const section of sections) {
       const es = effectiveSettings()[section], ds = DEFAULT_SETTINGS[section];
       if (!es || !ds || typeof es !== "object") continue;
-      for (const key of Object.keys(ds)) {
-        const cv = (es as Record<string, unknown>)[key];
-        const dv = (ds as Record<string, unknown>)[key];
-        if (JSON.stringify(cv) !== JSON.stringify(dv)) modified.push({ section, key, currentValue: cv, defaultValue: dv });
+      const diffs: Array<{ key: string; currentValue: unknown; defaultValue: unknown }> = [];
+      collectDeepDifferences(es, ds, "", diffs);
+      for (const diff of diffs) {
+        modified.push({ section, key: diff.key, currentValue: diff.currentValue, defaultValue: diff.defaultValue });
       }
     }
     if (effectiveSettings().vimEnabled !== DEFAULT_SETTINGS.vimEnabled) {
