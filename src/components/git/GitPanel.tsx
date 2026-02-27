@@ -745,11 +745,34 @@ const [signCommits, setSignCommits] = createSignal(false);
 
   const handleConflictResolved = async (filePath: string, resolution: ResolvedConflict) => {
     try {
-      const resolvedLines: string[] = [];
-      for (const hunk of resolution.hunks) {
-        resolvedLines.push(...hunk.content);
+      const diff = gitMerge.state.threeWayDiff;
+      if (!diff || diff.filePath !== filePath) {
+        showError("Conflict data not loaded for this file");
+        return;
       }
-      const resolvedContent = resolvedLines.join("\n");
+
+      const lines = diff.rawContent.split("\n");
+      const result: string[] = [];
+      const conflicts = diff.conflicts;
+      let conflictIdx = 0;
+      let lineIdx = 0;
+
+      while (lineIdx < lines.length) {
+        if (conflictIdx < conflicts.length && lineIdx === conflicts[conflictIdx].startLine) {
+          const conflict = conflicts[conflictIdx];
+          const hunkResolution = resolution.hunks.find(h => h.id === conflict.id);
+          if (hunkResolution && hunkResolution.content.length > 0) {
+            result.push(...hunkResolution.content);
+          }
+          lineIdx = conflict.endLine + 1;
+          conflictIdx++;
+        } else {
+          result.push(lines[lineIdx]);
+          lineIdx++;
+        }
+      }
+
+      const resolvedContent = result.join("\n");
       await gitMerge.resolveConflict(filePath, resolvedContent);
       setResolvingFile(null);
     } catch (err) {
