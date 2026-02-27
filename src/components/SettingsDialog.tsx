@@ -382,16 +382,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
   const getModifiedCount = (itemId: string): number => {
     const section = TREE_ID_TO_SECTION[itemId];
     if (!section) return 0;
-    const currentSection = settings.effectiveSettings()[section];
-    const defaultSection = DEFAULT_SETTINGS[section];
-    if (!currentSection || !defaultSection || typeof currentSection !== "object" || typeof defaultSection !== "object") return 0;
-    let count = 0;
-    for (const key of Object.keys(defaultSection as object)) {
-      const cv = (currentSection as Record<string, unknown>)[key];
-      const dv = (defaultSection as Record<string, unknown>)[key];
-      if (JSON.stringify(cv) !== JSON.stringify(dv)) count++;
-    }
-    return count;
+    return settings.getModifiedCountForSection(section);
   };
   
   // Get total modified settings count
