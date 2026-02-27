@@ -50,7 +50,7 @@ describe("CortexHeaderItem", () => {
     it("has secondary text color by default", () => {
       const { getByRole } = render(() => <CortexHeaderItem label="File" />);
       const button = getByRole("button") as HTMLElement;
-      expect(button.style.color).toBe("rgb(140, 141, 143)");
+      expect(button.style.color).toBe("var(--cortex-text-secondary)");
     });
 
     it("has no border radius by default", () => {
@@ -74,7 +74,7 @@ describe("CortexHeaderItem", () => {
         <CortexHeaderItem label="File" isActive={true} />
       ));
       const button = getByRole("button") as HTMLElement;
-      expect(button.style.color).toBe("rgb(252, 252, 252)");
+      expect(button.style.color).toBe("var(--cortex-text-primary)");
     });
 
     it("has border radius when active", () => {
@@ -135,7 +135,7 @@ describe("CortexHeaderItem", () => {
       const button = getByRole("button") as HTMLElement;
       const mouseEnterEvent = new MouseEvent("mouseenter", { bubbles: true });
       button.dispatchEvent(mouseEnterEvent);
-      expect(button.style.color).toBe("rgb(252, 252, 252)");
+      expect(button.style.color).toBe("var(--cortex-text-primary)");
     });
 
     it("applies border radius on hover", () => {
@@ -154,7 +154,7 @@ describe("CortexHeaderItem", () => {
       button.dispatchEvent(mouseEnterEvent);
       button.dispatchEvent(mouseLeaveEvent);
       expect(button.style.background).toBe("transparent");
-      expect(button.style.color).toBe("rgb(140, 141, 143)");
+      expect(button.style.color).toBe("var(--cortex-text-secondary)");
       expect(button.style.borderRadius).toBe("0px");
     });
   });

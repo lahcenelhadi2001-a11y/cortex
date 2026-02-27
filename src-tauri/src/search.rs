@@ -148,7 +148,11 @@ fn replace_in_file_internal(
     let mut replaced_count = 0u32;
 
     for (line_num, line_matches) in matches_by_line {
-        let line_idx = if line_num > 0 { (line_num - 1) as usize } else { 0 };
+        let line_idx = if line_num > 0 {
+            (line_num - 1) as usize
+        } else {
+            0
+        };
         if line_idx >= new_lines.len() {
             continue;
         }
