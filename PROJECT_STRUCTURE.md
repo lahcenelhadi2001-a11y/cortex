@@ -7,7 +7,7 @@
 | Command | Location | Result | Notes |
 |---------|----------|--------|-------|
 | `npm install` | `/workspace/ide` | ✅ Pass | 623 packages, 784 audited |
-| `npm run typecheck` | `/workspace/ide` | ⚠️ 2 errors | Pre-existing duplicate property errors in `JsonSettingsEditor.tsx` (see below) |
+| `npm run typecheck` | `/workspace/ide` | ⚠️ Pre-existing errors | Duplicate identifier/property errors introduced by other commits (see below) |
 | `npm run build` | `/workspace/ide` | ✅ Pass | Vite production build → `dist/` |
 | `npm test` | `/workspace/ide` | ⚠️ 9914 pass / 3 fail | Pre-existing failures (see below) |
 | `cargo check` | `/workspace/ide/src-tauri` | ✅ Pass | Rust backend compiles cleanly |
@@ -16,12 +16,14 @@
 
 ### Pre-existing TypeScript Errors
 
+These errors were introduced by other commits and are not caused by this baseline task:
+
 | File | Line | Error |
 |------|------|-------|
-| `src/components/settings/JsonSettingsEditor.tsx` | 348 | TS1117: Duplicate `wrapTabs` property in object literal |
-| `src/components/settings/JsonSettingsEditor.tsx` | 793 | TS1117: Duplicate `wrapTabs` property in object literal |
+| `src/AppCore.tsx` | 37, 40 | TS2300: Duplicate identifier `useSettings` |
+| `src/components/settings/JsonSettingsEditor.tsx` | 348, 793 | TS1117: Duplicate `wrapTabs` property in object literal |
 
-These were introduced by prior commits (`22f76f2`, `81aaf3c`, `ccccf44`) adding schema properties.
+**Note:** The exact set of pre-existing errors may shift as other concurrent tasks commit changes to `main`.
 
 ### Pre-existing Test Failures
 
