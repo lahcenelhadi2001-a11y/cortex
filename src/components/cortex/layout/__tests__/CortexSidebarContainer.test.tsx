@@ -52,6 +52,10 @@ vi.mock("@/components/cortex/CortexAccountPanel", () => ({
   CortexAccountPanel: () => <div data-testid="account-panel">Account</div>,
 }));
 
+vi.mock("@/components/cortex/CortexDocumentationPanel", () => ({
+  CortexDocumentationPanel: () => <div data-testid="docs-panel">Documentation</div>,
+}));
+
 function createDefaultProps(overrides: Partial<CortexSidebarContainerProps> = {}): CortexSidebarContainerProps {
   return {
     sidebarTab: "files" as SidebarTab,
@@ -91,6 +95,7 @@ describe("CortexSidebarContainer", () => {
       { tab: "themes", testId: "theme-picker" },
       { tab: "plugins", testId: "plugins-panel" },
       { tab: "account", testId: "account-panel" },
+      { tab: "docs", testId: "docs-panel" },
     ];
 
     for (const { tab, testId } of panelMap) {
@@ -118,7 +123,7 @@ describe("CortexSidebarContainer", () => {
 
   describe("Factory Panel Removal", () => {
     it("should not render factory panel for any valid sidebar tab", () => {
-      const validTabs: SidebarTab[] = ["files", "search", "git", "debug", "extensions", "agents", "themes", "plugins", "account"];
+      const validTabs: SidebarTab[] = ["files", "search", "git", "debug", "extensions", "agents", "themes", "plugins", "account", "docs"];
 
       for (const tab of validTabs) {
         cleanup();
@@ -129,7 +134,7 @@ describe("CortexSidebarContainer", () => {
     });
 
     it("should not include factory in the set of expected sidebar tabs", () => {
-      const expectedTabs: SidebarTab[] = ["files", "search", "git", "debug", "extensions", "agents", "themes", "plugins", "account"];
+      const expectedTabs: SidebarTab[] = ["files", "search", "git", "debug", "extensions", "agents", "themes", "plugins", "account", "docs"];
       expect(expectedTabs).not.toContain("factory");
     });
   });
