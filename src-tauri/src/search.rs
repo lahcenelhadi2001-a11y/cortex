@@ -148,11 +148,12 @@ fn replace_in_file_internal(
     let mut replaced_count = 0u32;
 
     for (line_num, line_matches) in matches_by_line {
-        if (line_num as usize) >= new_lines.len() {
+        let line_idx = if line_num > 0 { (line_num - 1) as usize } else { 0 };
+        if line_idx >= new_lines.len() {
             continue;
         }
 
-        let mut line = new_lines[line_num as usize].clone();
+        let mut line = new_lines[line_idx].clone();
 
         for m in line_matches {
             let start = m.column as usize;
@@ -171,7 +172,7 @@ fn replace_in_file_internal(
             }
         }
 
-        new_lines[line_num as usize] = line;
+        new_lines[line_idx] = line;
     }
 
     // Create backup before writing

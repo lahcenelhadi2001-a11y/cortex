@@ -20,6 +20,9 @@ import {
   serializeToCodeSearch,
   generateCodeSearchFilename,
 } from "@/utils/searchUtils";
+import { CortexModal } from "@/components/cortex/primitives/CortexModal";
+import { CortexButton } from "@/components/cortex/primitives/CortexButton";
+import { CortexIcon } from "@/components/cortex/primitives/CortexIcon";
 
 // UI Kit imports
 import { 
@@ -259,6 +262,9 @@ export function SearchSidebar() {
   const [excludePattern, setExcludePattern] = createSignal("node_modules, .git, dist, build");
   const [showFilters, setShowFilters] = createSignal(false);
   
+  // Confirmation dialog state
+  const [showReplaceAllConfirm, setShowReplaceAllConfirm] = createSignal(false);
+
   // UI state
   const [expandedFiles, setExpandedFiles] = createSignal<Set<string>>(new Set());
   const [showReplace, setShowReplace] = createSignal(true);
@@ -854,36 +860,69 @@ export function SearchSidebar() {
     }
   };
 
-  const replaceInAllFiles = async () => {
+  const confirmAndReplaceAll = () => {
     const allResults = results();
     if (allResults.length === 0) return;
-    
-    const totalMatchCount = allResults.reduce((sum, r) => sum + r.matches.length, 0);
-    
+    setShowReplaceAllConfirm(true);
+  };
+
+  const replaceInAllFiles = async () => {
+    setShowReplaceAllConfirm(false);
+    const allResults = results();
+    if (allResults.length === 0) return;
+
     setLoading(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const result of allResults) {
-      const success = await replaceInFile(result.file);
-      if (success) {
-        successCount++;
-      } else {
-        failCount++;
+
+    try {
+      const projectPath = getProjectPath();
+      const backendResults = allResults.map((r) => ({
+        uri: projectPath ? `${projectPath}/${r.file}` : r.file,
+        matches: r.matches.map((m) => ({
+          id: `${r.file}:${m.line}:${m.column}`,
+          line: m.line,
+          column: m.matchStart,
+          length: m.matchEnd - m.matchStart,
+          line_text: m.text,
+          preview: m.text,
+        })),
+        totalMatches: r.matches.length,
+      }));
+
+      const totalReplaced = await invoke<number>("search_replace_all", {
+        results: backendResults,
+        replaceText: replaceText(),
+        useRegex: useRegex(),
+        preserveCase: preserveCase(),
+      });
+
+      for (const result of allResults) {
+        const fullPath = projectPath ? `${projectPath}/${result.file}` : result.file;
+        const openFileEntry = editorState.openFiles.find(
+          (f) => f.path.replace(/\\/g, "/") === fullPath.replace(/\\/g, "/")
+        );
+        if (openFileEntry) {
+          try {
+            const newContent = await fsReadFile(fullPath);
+            updateFileContent(openFileEntry.id, newContent);
+          } catch {
+            // File reload failed silently; editor will show stale content
+          }
+        }
       }
+
+      await performSearch(query());
+
+      showNotification(
+        "success",
+        `Replaced ${totalReplaced} occurrences in ${allResults.length} files`
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("Replace all failed:", err);
+      showNotification("error", `Replace all failed: ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
-    
-    await performSearch(query());
-    
-    setLoading(false);
-    
-    const message = failCount > 0 
-      ? `Replaced ${totalMatchCount} occurrences across ${successCount} files, ${failCount} failed`
-      : `Replaced ${totalMatchCount} occurrences across ${successCount} files`;
-    window.dispatchEvent(new CustomEvent("notification", { 
-      detail: { type: failCount > 0 ? "warning" : "success", message } 
-    }));
   };
 
   const totalMatches = () => {
@@ -1433,7 +1472,7 @@ export function SearchSidebar() {
           <Button
             variant="primary"
             size="sm"
-            onClick={replaceInAllFiles}
+            onClick={confirmAndReplaceAll}
             disabled={loading()}
             style={{ width: "100%" }}
           >
@@ -1441,6 +1480,55 @@ export function SearchSidebar() {
           </Button>
         </div>
       </Show>
+
+      {/* Replace All Confirmation Dialog */}
+      <CortexModal
+        open={showReplaceAllConfirm()}
+        onClose={() => setShowReplaceAllConfirm(false)}
+        title="Replace All"
+        size="sm"
+        closeOnOverlay={false}
+        footer={
+          <div style={{ display: "flex", "align-items": "center", "justify-content": "flex-end", gap: "8px", width: "100%" }}>
+            <CortexButton variant="ghost" onClick={() => setShowReplaceAllConfirm(false)}>
+              Cancel
+            </CortexButton>
+            <CortexButton variant="primary" onClick={replaceInAllFiles}>
+              Replace All
+            </CortexButton>
+          </div>
+        }
+      >
+        <div style={{ display: "flex", "align-items": "flex-start", gap: "16px" }}>
+          <div style={{
+            display: "flex",
+            "align-items": "center",
+            "justify-content": "center",
+            width: "40px",
+            height: "40px",
+            "border-radius": "var(--cortex-radius-md, 8px)",
+            background: "var(--cortex-warning-bg, rgba(245, 158, 11, 0.1))",
+            "flex-shrink": "0",
+          }}>
+            <CortexIcon
+              name="triangle-exclamation"
+              size={20}
+              style={{ color: "var(--cortex-warning, #F59E0B)" }}
+            />
+          </div>
+          <div style={{ display: "flex", "flex-direction": "column", gap: "4px" }}>
+            <p style={{ margin: "0", "font-size": "14px", color: "var(--cortex-text-primary)", "line-height": "1.5" }}>
+              Replace <strong>{totalMatches()}</strong> occurrences across <strong>{results().length}</strong> files?
+            </p>
+            <p style={{ margin: "0", "font-size": "13px", color: "var(--cortex-text-muted)", "line-height": "1.5" }}>
+              "{query()}" → "{replaceText()}"
+            </p>
+            <p style={{ margin: "0", "font-size": "13px", color: "var(--cortex-text-muted)", "line-height": "1.5" }}>
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+      </CortexModal>
 
       {/* Error Message */}
       <Show when={searchError()}>
