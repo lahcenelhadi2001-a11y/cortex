@@ -1849,19 +1849,70 @@ function SettingItem(props: {
 
   // Reset to parent scope setting
   const resetOverride = () => {
-    if (props.scope === "folder" && props.folderPath) {
-      // @ts-expect-error Dynamic key access for settings
-      settings.resetFolderSetting(props.folderPath, props.setting.section, props.setting.key);
+    if (props.setting.subSection) {
+      // For nested settings (e.g., editor.inlayHints.enabled), we need to reset
+      // the individual key within the subSection, not the subSection itself.
+      // We do this by reading the current subSection object, removing the key,
+      // and writing the result back.
+      if (props.scope === "folder" && props.folderPath) {
+        const folderSettings = settings.getEffectiveSettingsForPath(props.folderPath);
+        const section = folderSettings[props.setting.section];
+        if (section && typeof section === "object") {
+          const sectionObj = section as Record<string, unknown>;
+          const currentSub = (sectionObj[props.setting.subSection] ?? {}) as Record<string, unknown>;
+          const { [props.setting.key]: _removed, ...remaining } = currentSub;
+          if (Object.keys(remaining).length === 0) {
+            // @ts-expect-error Dynamic key access for settings
+            settings.resetFolderSetting(props.folderPath, props.setting.section, props.setting.subSection);
+          } else {
+            // @ts-expect-error Dynamic key access for settings
+            settings.setFolderSetting(props.folderPath, props.setting.section, props.setting.subSection, remaining);
+          }
+        }
+      } else {
+        const section = settings.effectiveSettings()[props.setting.section];
+        if (section && typeof section === "object") {
+          const sectionObj = section as Record<string, unknown>;
+          const currentSub = (sectionObj[props.setting.subSection] ?? {}) as Record<string, unknown>;
+          const { [props.setting.key]: _removed, ...remaining } = currentSub;
+          if (Object.keys(remaining).length === 0) {
+            // @ts-expect-error Dynamic key access for settings
+            settings.resetWorkspaceSetting(props.setting.section, props.setting.subSection);
+          } else {
+            // @ts-expect-error Dynamic key access for settings
+            settings.setWorkspaceSetting(props.setting.section, props.setting.subSection, remaining);
+          }
+        }
+      }
     } else {
-      // @ts-expect-error Dynamic key access for settings
-      settings.resetWorkspaceSetting(props.setting.section, props.setting.key);
+      if (props.scope === "folder" && props.folderPath) {
+        // @ts-expect-error Dynamic key access for settings
+        settings.resetFolderSetting(props.folderPath, props.setting.section, props.setting.key);
+      } else {
+        // @ts-expect-error Dynamic key access for settings
+        settings.resetWorkspaceSetting(props.setting.section, props.setting.key);
+      }
     }
   };
 
   // Reset to default
   const resetToDefault = () => {
-    // @ts-expect-error Dynamic key access for settings
-    settings.resetSettingToDefault(props.setting.section, props.setting.key);
+    if (props.setting.subSection) {
+      // For nested settings, reset the individual key within the subSection
+      // by writing the default value for that specific key back into the subSection object
+      const section = settings.effectiveSettings()[props.setting.section];
+      if (section && typeof section === "object") {
+        const sectionObj = section as Record<string, unknown>;
+        const currentSub = (sectionObj[props.setting.subSection] ?? {}) as Record<string, unknown>;
+        const updatedSub = { ...currentSub, [props.setting.key]: props.setting.defaultValue };
+        const newSection = { ...sectionObj, [props.setting.subSection]: updatedSub };
+        // @ts-expect-error Dynamic section update
+        settings.updateSettings(props.setting.section, newSection);
+      }
+    } else {
+      // @ts-expect-error Dynamic key access for settings
+      settings.resetSettingToDefault(props.setting.section, props.setting.key);
+    }
   };
 
   // Match search query - now uses pre-parsed filters
