@@ -91,6 +91,7 @@ export interface VirtualItemProps {
   onToggleNestedExpand: (path: string) => void;
   onContextMenu: (e: MouseEvent, item: FlattenedItem) => void;
   onRename: (oldPath: string, newName: string) => void;
+  validateRename: (oldPath: string, newName: string) => string | null;
   onDragStart: (e: DragEvent, entry: FileEntry) => void;
   onDragEnd: () => void;
   onDragOver: (e: DragEvent, entry: FileEntry) => void;

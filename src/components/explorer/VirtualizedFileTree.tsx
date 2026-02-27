@@ -78,6 +78,7 @@ export function VirtualizedFileTree(props: VirtualizedFileTreeProps) {
                       onToggleNestedExpand={tree.handleToggleNestedExpand}
                       onContextMenu={tree.handleContextMenu}
                       onRename={tree.handleRename}
+                      validateRename={tree.validateRename}
                       onDragStart={tree.handleDragStart}
                       onDragEnd={tree.handleDragEnd}
                       onDragOver={tree.handleDragOver}

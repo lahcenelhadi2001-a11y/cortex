@@ -1025,12 +1025,64 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
     }
   };
   
+  const INVALID_NAME_CHARS = /[/\\:*?"<>|]/;
+  const RESERVED_OS_NAMES = new Set([
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+  ]);
+
+  const validateRename = (oldPath: string, newName: string): string | null => {
+    if (!newName || !newName.trim()) {
+      return "Name cannot be empty";
+    }
+
+    if (newName !== newName.trim()) {
+      return "Name cannot start or end with whitespace";
+    }
+
+    const invalidMatch = newName.match(INVALID_NAME_CHARS);
+    if (invalidMatch) {
+      return `Name contains invalid character: ${invalidMatch[0]}`;
+    }
+
+    if (newName === "." || newName === "..") {
+      return "Name is reserved";
+    }
+
+    if (newName.endsWith(".") || newName.endsWith(" ")) {
+      return "Name cannot end with a dot or space";
+    }
+
+    const baseName = newName.includes(".") ? newName.substring(0, newName.lastIndexOf(".")) : newName;
+    if (RESERVED_OS_NAMES.has(baseName.toUpperCase())) {
+      return "Name is reserved by the operating system";
+    }
+
+    const parentPath = oldPath.replace(/[/\\][^/\\]+$/, "");
+    const siblings = directoryCache().get(parentPath);
+    if (siblings) {
+      const currentName = oldPath.replace(/^.*[/\\]/, "");
+      const duplicate = siblings.some(
+        (entry) => entry.name === newName && entry.name !== currentName
+      );
+      if (duplicate) {
+        return "A file or folder with that name already exists";
+      }
+    }
+
+    return null;
+  };
+
   const handleRename = async (oldPath: string, newName: string) => {
     setRenamingPath(null);
     
     const items = flattenedItems();
     const item = items.find(i => i.entry.path === oldPath);
     if (!item || item.entry.name === newName) return;
+
+    const error = validateRename(oldPath, newName);
+    if (error) return;
 
     const parentPath = oldPath.replace(/[/\\][^/\\]+$/, "");
     const newPath = `${parentPath}/${newName}`.replace(/\\/g, "/");
@@ -1471,6 +1523,7 @@ export function useFileTree(props: VirtualizedFileTreeProps) {
     handleContextMenu,
     handleCloseContextMenu,
     handleContextAction,
+    validateRename,
     handleRename,
     handleDragStart,
     handleDragEnd,

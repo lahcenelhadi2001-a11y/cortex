@@ -554,6 +554,10 @@ button.btn-vscode,
   border-color: var(--cortex-focus-color);
 }
 
+.file-tree-rename-input--error {
+  border-color: var(--cortex-error) !important;
+}
+
 /* File Explorer Search */
 .file-explorer-search {
   display: flex;

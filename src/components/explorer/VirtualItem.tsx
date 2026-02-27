@@ -10,6 +10,13 @@ export function VirtualItem(props: VirtualItemProps) {
   
   const isFocused = () => props.focusedPath === props.item.entry.path;
   const isRenaming = () => props.renamingPath === props.item.entry.path;
+
+  const renameError = createMemo(() => {
+    if (!isRenaming()) return null;
+    const val = renameValue();
+    if (val === props.item.entry.name) return null;
+    return props.validateRename(props.item.entry.path, val);
+  });
   const isDragOver = () => props.dragOverPath === props.item.entry.path;
   
   const displayName = createMemo(() => 
@@ -93,7 +100,9 @@ export function VirtualItem(props: VirtualItemProps) {
     if (isRenaming()) {
       if (e.key === "Enter") {
         e.preventDefault();
-        props.onRename(props.item.entry.path, renameValue());
+        if (!renameError()) {
+          props.onRename(props.item.entry.path, renameValue());
+        }
       } else if (e.key === "Escape") {
         e.preventDefault();
         props.onRename(props.item.entry.path, props.item.entry.name);
@@ -250,16 +259,30 @@ export function VirtualItem(props: VirtualItemProps) {
           </span>
         }
       >
-        <input
-          ref={inputRef}
-          type="text"
-          class="file-tree-rename-input"
-          value={renameValue()}
-          onInput={(e) => setRenameValue(e.currentTarget.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={() => props.onRename(props.item.entry.path, renameValue())}
-          onClick={(e) => e.stopPropagation()}
-        />
+        <div class="flex flex-col flex-1 min-w-0 relative">
+          <input
+            ref={inputRef}
+            type="text"
+            class="file-tree-rename-input"
+            classList={{ "file-tree-rename-input--error": !!renameError() }}
+            value={renameValue()}
+            onInput={(e) => setRenameValue(e.currentTarget.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              if (renameError()) {
+                props.onRename(props.item.entry.path, props.item.entry.name);
+              } else {
+                props.onRename(props.item.entry.path, renameValue());
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <Show when={renameError()}>
+            <span class="absolute top-full left-0 mt-px px-1 py-px text-[10px] leading-tight text-[var(--cortex-error)] bg-[var(--cortex-surface-base)] border border-[var(--cortex-error)] rounded-sm z-50 whitespace-nowrap">
+              {renameError()}
+            </span>
+          </Show>
+        </div>
       </Show>
       
       <Show when={props.gitDecoration?.badge && props.gitDecoration?.badgeClass}>
