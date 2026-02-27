@@ -609,6 +609,23 @@ const cortex_SETTINGS_SCHEMA = {
         }
       }
     },
+    workbench: {
+      type: "object",
+      description: "Workbench settings (tabs, layout, etc.)",
+      properties: {
+        editor: {
+          type: "object",
+          description: "Workbench editor settings",
+          properties: {
+            wrapTabs: {
+              type: "boolean",
+              description: "Wrap tabs to multiple rows when they overflow",
+              default: false
+            }
+          }
+        }
+      }
+    },
     vimEnabled: {
       type: "boolean",
       description: "Enable Vim keybindings",
