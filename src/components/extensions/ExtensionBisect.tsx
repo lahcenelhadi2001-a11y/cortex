@@ -40,7 +40,7 @@ export const ExtensionBisect: Component<ExtensionBisectProps> = (props) => {
   // Get the found extension details
   const foundExtensionDetails = createMemo(() => {
     if (!state.foundExtension) return null;
-    return extensions.extensions().find(
+    return (extensions.extensions() || []).find(
       e => e.manifest.name === state.foundExtension
     );
   });
@@ -314,13 +314,13 @@ export const ExtensionBisect: Component<ExtensionBisectProps> = (props) => {
             >
               <ExtensionIcon />
               <span style={{ "font-size": "13px", color: tokens.colors.text.primary }}>
-                {extensions.enabledExtensions().length} enabled extensions
+                {(extensions.enabledExtensions() || []).length} enabled extensions
               </span>
             </div>
 
             <button
               onClick={handleStart}
-              disabled={isLoading() || extensions.enabledExtensions().length === 0}
+              disabled={isLoading() || (extensions.enabledExtensions() || []).length === 0}
               style={{
                 padding: "10px 24px",
                 "border-radius": tokens.radius.md,
@@ -330,7 +330,7 @@ export const ExtensionBisect: Component<ExtensionBisectProps> = (props) => {
                 "font-size": "13px",
                 "font-weight": 600,
                 cursor: isLoading() ? "not-allowed" : "pointer",
-                opacity: isLoading() || extensions.enabledExtensions().length === 0 ? 0.6 : 1,
+                opacity: isLoading() || (extensions.enabledExtensions() || []).length === 0 ? 0.6 : 1,
                 display: "flex",
                 "align-items": "center",
                 gap: "8px",
@@ -344,7 +344,7 @@ export const ExtensionBisect: Component<ExtensionBisectProps> = (props) => {
               Start Extension Bisect
             </button>
 
-            <Show when={extensions.enabledExtensions().length === 0}>
+            <Show when={(extensions.enabledExtensions() || []).length === 0}>
               <p
                 style={{
                   "font-size": "12px",

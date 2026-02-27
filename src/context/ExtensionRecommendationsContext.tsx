@@ -136,7 +136,7 @@ export function ExtensionRecommendationsProvider(props: ParentProps) {
       return [];
     }
 
-    const installedExtensions = extensions.extensions();
+    const installedExtensions = extensions.extensions() || [];
     
     return json.recommendations.map((id) => {
       const matchingExtension = installedExtensions.find((ext) =>

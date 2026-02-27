@@ -215,7 +215,7 @@ export function ExtensionBisectProvider(props: ParentProps) {
    */
   const startBisect = async (): Promise<void> => {
     // Get all enabled extensions
-    const enabledExts = extensions.enabledExtensions();
+    const enabledExts = extensions.enabledExtensions() || [];
     
     if (enabledExts.length === 0) {
       console.warn("[ExtensionBisect] No enabled extensions to bisect");
@@ -249,7 +249,7 @@ export function ExtensionBisectProvider(props: ParentProps) {
 
     // Save original state
     const originalState = new Map<string, boolean>();
-    extensions.extensions().forEach(ext => {
+    (extensions.extensions() || []).forEach(ext => {
       originalState.set(ext.manifest.name, ext.enabled);
     });
 
@@ -435,7 +435,7 @@ export function ExtensionBisectProvider(props: ParentProps) {
 
     // Restore original extension states
     for (const [name, wasEnabled] of state.originalEnabledState) {
-      const currentExt = extensions.extensions().find(e => e.manifest.name === name);
+      const currentExt = (extensions.extensions() || []).find(e => e.manifest.name === name);
       if (currentExt) {
         if (wasEnabled && !currentExt.enabled) {
           await extensions.enableExtension(name);
@@ -474,7 +474,7 @@ export function ExtensionBisectProvider(props: ParentProps) {
     if (!state.foundExtension) return;
 
     // Ensure it's disabled
-    const ext = extensions.extensions().find(e => e.manifest.name === state.foundExtension);
+    const ext = (extensions.extensions() || []).find(e => e.manifest.name === state.foundExtension);
     if (ext?.enabled) {
       await extensions.disableExtension(state.foundExtension);
     }
@@ -483,7 +483,7 @@ export function ExtensionBisectProvider(props: ParentProps) {
     for (const [name, wasEnabled] of state.originalEnabledState) {
       if (name === state.foundExtension) continue;
       
-      const currentExt = extensions.extensions().find(e => e.manifest.name === name);
+      const currentExt = (extensions.extensions() || []).find(e => e.manifest.name === name);
       if (currentExt) {
         if (wasEnabled && !currentExt.enabled) {
           await extensions.enableExtension(name);
@@ -512,7 +512,7 @@ export function ExtensionBisectProvider(props: ParentProps) {
     for (const [name, wasEnabled] of state.originalEnabledState) {
       if (name === foundName) continue;
       
-      const currentExt = extensions.extensions().find(e => e.manifest.name === name);
+      const currentExt = (extensions.extensions() || []).find(e => e.manifest.name === name);
       if (currentExt) {
         if (wasEnabled && !currentExt.enabled) {
           await extensions.enableExtension(name);

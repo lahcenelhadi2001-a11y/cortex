@@ -1043,7 +1043,7 @@ export function QuickAccessProvider(props: { children: JSX.Element }) {
     provideItems: async (q) => {
       const items: QuickPickItem[] = [];
       const trimmedQuery = q.trim().toLowerCase();
-      const extensionList = extensions.extensions();
+      const extensionList = extensions.extensions() || [];
       
       // Filter extensions by query
       const filteredExtensions = extensionList.filter(ext => {

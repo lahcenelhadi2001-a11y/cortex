@@ -928,7 +928,7 @@ export function ExtensionsProvider(props: ParentProps) {
 
     const outdated = getOutdatedExtensions();
     for (const update of outdated) {
-      const ext = extensions().find((e) => e.manifest.name === update.extensionName);
+      const ext = (extensions() || []).find((e) => e.manifest.name === update.extensionName);
       if (!ext) continue;
 
       // Check if we should update this extension based on settings
@@ -1053,7 +1053,7 @@ export function ExtensionsProvider(props: ParentProps) {
       )
     );
 
-    const ext = extensions().find(e => e.manifest.name === extensionId);
+    const ext = (extensions() || []).find(e => e.manifest.name === extensionId);
     if (!ext || !ext.manifest.wasm) {
       throw new Error(`WASM extension not found: ${extensionId}`);
     }
@@ -1200,7 +1200,7 @@ export function ExtensionsProvider(props: ParentProps) {
       const results = await Promise.allSettled(
         batch.map(async (extensionId) => {
           // Check if already installed
-          const existing = extensions().find(
+          const existing = (extensions() || []).find(
             (ext) => ext.manifest.name === extensionId
           );
           if (existing) {
@@ -1378,7 +1378,7 @@ export function ExtensionsProvider(props: ParentProps) {
   // ============================================================================
 
   const isWebExtension = (extensionId: string): boolean => {
-    const ext = extensions().find((e) => e.manifest.name === extensionId);
+    const ext = (extensions() || []).find((e) => e.manifest.name === extensionId);
     if (!ext) return false;
 
     const hasWorkspaceContributions =
@@ -1394,7 +1394,7 @@ export function ExtensionsProvider(props: ParentProps) {
   };
 
   const getExtensionKind = (extensionId: string): ExtensionKindString[] => {
-    const ext = extensions().find((e) => e.manifest.name === extensionId);
+    const ext = (extensions() || []).find((e) => e.manifest.name === extensionId);
     if (!ext) return ["workspace"];
 
     const kinds: ExtensionKindString[] = [];
@@ -1515,7 +1515,7 @@ export function ExtensionsProvider(props: ParentProps) {
           "extension:update-available",
           (event) => {
             const { name, version } = event.payload;
-            const ext = extensions().find((e) => e.manifest.name === name);
+            const ext = (extensions() || []).find((e) => e.manifest.name === name);
             if (ext && compareVersions(ext.manifest.version, version) < 0) {
               setUpdateState(
                 produce((state) => {
@@ -1845,15 +1845,15 @@ export function useWebExtensions() {
     
     // Derived
     getWebCompatibleExtensions: () => {
-      return ctx.extensions().filter((ext) => ctx.isWebExtension(ext.manifest.name));
+      return (ctx.extensions() || []).filter((ext) => ctx.isWebExtension(ext.manifest.name));
     },
     getUIExtensions: () => {
-      return ctx.extensions().filter((ext) => 
+      return (ctx.extensions() || []).filter((ext) => 
         ctx.getExtensionKind(ext.manifest.name).includes("ui")
       );
     },
     getWorkspaceExtensions: () => {
-      return ctx.extensions().filter((ext) => 
+      return (ctx.extensions() || []).filter((ext) => 
         ctx.getExtensionKind(ext.manifest.name).includes("workspace")
       );
     },
