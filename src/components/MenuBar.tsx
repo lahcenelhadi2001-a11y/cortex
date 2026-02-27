@@ -444,7 +444,8 @@ export function MenuBar(_props: MenuBarProps = {}) {
 
   const openProjectSearch = () => {
     closeMenu();
-    commands?.setShowProjectSearch(true);
+    window.dispatchEvent(new CustomEvent("view:search"));
+    window.dispatchEvent(new CustomEvent("editor:get-selection-for-search"));
   };
 
   const toggleTerminal = () => {
