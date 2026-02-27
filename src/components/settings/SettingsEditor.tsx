@@ -191,6 +191,7 @@ const SETTINGS_REGISTRY: SettingDefinition[] = [
   { id: "editor.guidesIndentation", key: "guidesIndentation", section: "editor", label: "Indentation Guides", description: "Controls whether the editor should render indent guides.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.guidesIndentation },
   { id: "editor.guidesBracketPairs", key: "guidesBracketPairs", section: "editor", label: "Bracket Pair Guides", description: "Controls whether bracket pair guides are enabled.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.guidesBracketPairs },
   { id: "editor.verticalTabs", key: "verticalTabs", section: "editor", label: "Vertical Tabs", description: "Enable vertical tabs layout.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.verticalTabs, tags: ["experimental"] },
+  { id: "editor.enablePreview", key: "enablePreview", section: "editor", label: "Enable Preview", description: "Controls whether editors open as preview. Preview editors are reused until they are pinned or modified.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.enablePreview },
 
   // Editor Inlay Hints Settings
   { id: "editor.inlayHints.enabled", key: "enabled", section: "editor", subSection: "inlayHints", label: "Inlay Hints: Enabled", description: "Enables the inlay hints in the editor.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.inlayHints.enabled },
@@ -201,6 +202,11 @@ const SETTINGS_REGISTRY: SettingDefinition[] = [
   { id: "editor.inlayHints.showReturnTypes", key: "showReturnTypes", section: "editor", subSection: "inlayHints", label: "Inlay Hints: Show Return Types", description: "Show return type hints for functions.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.inlayHints.showReturnTypes },
   { id: "editor.inlayHints.maxLength", key: "maxLength", section: "editor", subSection: "inlayHints", label: "Inlay Hints: Max Length", description: "Maximum length of inlay hint text before truncation.", type: "number", defaultValue: DEFAULT_SETTINGS.editor.inlayHints.maxLength, min: 1, max: 120 },
   { id: "editor.inlayHints.padding", key: "padding", section: "editor", subSection: "inlayHints", label: "Inlay Hints: Padding", description: "Adds padding around inlay hints.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.inlayHints.padding },
+
+  // Editor Semantic Highlighting Settings
+  { id: "editor.semanticHighlighting.enabled", key: "enabled", section: "editor", subSection: "semanticHighlighting", label: "Semantic Highlighting: Enabled", description: "Controls whether semantic highlighting is enabled from the Language Server.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.semanticHighlighting.enabled },
+  { id: "editor.semanticHighlighting.strings", key: "strings", section: "editor", subSection: "semanticHighlighting", label: "Semantic Highlighting: Strings", description: "Show semantic tokens for strings (can be verbose in some languages).", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.semanticHighlighting.strings },
+  { id: "editor.semanticHighlighting.comments", key: "comments", section: "editor", subSection: "semanticHighlighting", label: "Semantic Highlighting: Comments", description: "Show semantic tokens for comments.", type: "boolean", defaultValue: DEFAULT_SETTINGS.editor.semanticHighlighting.comments },
 
   // Theme Settings
   { id: "theme.theme", key: "theme", section: "theme", label: "Color Theme", description: "Specifies the color theme used in the workbench.", type: "enum", defaultValue: DEFAULT_SETTINGS.theme.theme, enumValues: [
