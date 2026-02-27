@@ -766,37 +766,40 @@ export function SearchSidebar() {
     onCleanup(() => window.removeEventListener("click", handleClick));
   });
 
-  const openMatch = async (file: string, line: number, column: number) => {
+  const openMatch = async (file: string, line: number, column: number, matchStart?: number, matchEnd?: number) => {
     const projectPath = getProjectPath();
-    // Check if file is already an absolute path (starts with drive letter on Windows or / on Unix)
     const isAbsolutePath = /^[a-zA-Z]:[\\/]/.test(file) || file.startsWith('/');
     const fullPath = isAbsolutePath ? file : (projectPath ? `${projectPath}/${file}` : file);
     
-    // Check if the file is already open and active
     const normalizedFullPath = fullPath.replace(/\\/g, '/');
     const activeFile = editorState.openFiles.find(f => f.id === editorState.activeFileId);
     const isAlreadyActive = activeFile && activeFile.path.replace(/\\/g, '/') === normalizedFullPath;
+
+    const navigateToMatch = () => {
+      if (matchStart !== undefined && matchEnd !== undefined) {
+        window.dispatchEvent(new CustomEvent("buffer-search:goto", {
+          detail: { line, start: matchStart, end: matchEnd }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent("editor:goto-line", {
+          detail: { line, column }
+        }));
+      }
+    };
     
     if (isAlreadyActive) {
-      // File is already active, just navigate to line
-      window.dispatchEvent(new CustomEvent("editor:goto-line", { 
-        detail: { line, column }
-      }));
+      navigateToMatch();
       return;
     }
     
-    // Listen for editor:file-ready event before navigating to line
     let handled = false;
     const handleEditorReady = (e: CustomEvent<{ filePath: string }>) => {
       if (handled) return;
-      // Normalize paths for comparison (handle both / and \ separators)
       const eventPath = e.detail.filePath.replace(/\\/g, '/');
       if (eventPath === normalizedFullPath) {
         handled = true;
         window.removeEventListener("editor:file-ready", handleEditorReady as EventListener);
-        window.dispatchEvent(new CustomEvent("editor:goto-line", { 
-          detail: { line, column }
-        }));
+        navigateToMatch();
       }
     };
     
@@ -804,14 +807,11 @@ export function SearchSidebar() {
     
     await openFile(fullPath);
     
-    // Fallback timeout in case the event doesn't fire
     setTimeout(() => {
       if (!handled) {
         handled = true;
         window.removeEventListener("editor:file-ready", handleEditorReady as EventListener);
-        window.dispatchEvent(new CustomEvent("editor:goto-line", { 
-          detail: { line, column }
-        }));
+        navigateToMatch();
       }
     }, 300);
   };
@@ -856,6 +856,8 @@ export function SearchSidebar() {
     const allResults = results();
     if (allResults.length === 0) return;
     
+    const totalMatchCount = allResults.reduce((sum, r) => sum + r.matches.length, 0);
+    
     setLoading(true);
     
     let successCount = 0;
@@ -875,8 +877,8 @@ export function SearchSidebar() {
     setLoading(false);
     
     const message = failCount > 0 
-      ? `Replaced in ${successCount} files, ${failCount} failed`
-      : `Replaced in ${successCount} files`;
+      ? `Replaced ${totalMatchCount} occurrences across ${successCount} files, ${failCount} failed`
+      : `Replaced ${totalMatchCount} occurrences across ${successCount} files`;
     window.dispatchEvent(new CustomEvent("notification", { 
       detail: { type: failCount > 0 ? "warning" : "success", message } 
     }));
@@ -1500,7 +1502,7 @@ export function SearchSidebar() {
                           style={matchRowStyle}
                           onClick={() => {
                             if (item.type === 'match') {
-                              openMatch(item.file, item.match.line, item.match.column);
+                              openMatch(item.file, item.match.line, item.match.column, item.match.matchStart, item.match.matchEnd);
                             }
                           }}
                           onContextMenu={(e) => {
@@ -1723,7 +1725,7 @@ export function SearchSidebar() {
                     }}
                     onClick={() => {
                       if (node.match) {
-                        openMatch(node.path, node.match.line, node.match.column);
+                        openMatch(node.path, node.match.line, node.match.column, node.match.matchStart, node.match.matchEnd);
                       }
                     }}
                     onContextMenu={(e) => handleContextMenu(e, node.path, node.match || null)}
