@@ -2,6 +2,7 @@ import { createContext, useContext, ParentComponent, onMount, onCleanup, createS
 import { createStore, produce } from "solid-js/store";
 import { invoke } from "@tauri-apps/api/core";
 import { terminalLogger } from "../utils/logger";
+import { useToast } from "./ToastContext";
 import { useTauriListen } from "../hooks";
 
 // Shell integration utilities
@@ -668,6 +669,7 @@ class OutputProcessor {
 }
 
 export const TerminalsProvider: ParentComponent = (props) => {
+  const toast = useToast();
   const [state, setState] = createStore<TerminalsState>({
     terminals: [],
     activeTerminalId: null,
@@ -956,6 +958,7 @@ export const TerminalsProvider: ParentComponent = (props) => {
       return terminal;
     } catch (e) {
       console.error("[Terminals] Failed to create terminal:", e);
+      toast.error("Failed to create terminal: " + String(e));
       throw e;
     }
   };

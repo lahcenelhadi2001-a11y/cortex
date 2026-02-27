@@ -398,6 +398,8 @@ export function GitPanel() {
   let errorTimeout: ReturnType<typeof setTimeout> | undefined;
   const showError = (message: string, type: "error" | "warning" = "error") => {
     setError({ message, type });
+    if (type === "error") toast.error(message);
+    else toast.warning(message);
     if (errorTimeout) clearTimeout(errorTimeout);
     errorTimeout = setTimeout(clearError, 5000);
   };

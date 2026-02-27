@@ -20,6 +20,7 @@ import {
 import { createStore, produce } from "solid-js/store";
 import { Icon } from "../ui/Icon";
 import { Button, IconButton, Input, Text, Badge } from "@/components/ui";
+import { useToast } from "@/context/ToastContext";
 import { terminalLogger } from "../../utils/logger";
 
 // ============================================================================
@@ -444,6 +445,7 @@ function RuleListItem(props: RuleListItemProps) {
 // ============================================================================
 
 export function AutoReplyManager(props: AutoReplyManagerProps) {
+  const toast = useToast();
   const [rules, setRules] = createStore<AutoReplyRule[]>(
     props.initialRules || loadRulesFromStorage()
   );
@@ -567,7 +569,7 @@ export function AutoReplyManager(props: AutoReplyManagerProps) {
           }
         }));
       } catch (e) {
-        alert(`Failed to import rules: ${e instanceof Error ? e.message : "Unknown error"}`);
+        toast.error(`Failed to import rules: ${e instanceof Error ? e.message : "Unknown error"}`);
       }
     };
     input.click();

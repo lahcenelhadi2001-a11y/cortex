@@ -1,6 +1,7 @@
 import { Component, For, Show, createSignal, JSX } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useToast } from "@/context/ToastContext";
 import { SearchResultItem } from "@/components/search/SearchResultItem";
 
 interface WorkspaceSearchMatch {
@@ -55,6 +56,7 @@ const getFilename = (filepath: string): string =>
 
 export const GlobalSearch: Component = () => {
   const workspace = useWorkspace();
+  const toast = useToast();
 
   const [searchQuery, setSearchQuery] = createSignal("");
   const [replaceQuery, setReplaceQuery] = createSignal("");
@@ -122,8 +124,14 @@ export const GlobalSearch: Component = () => {
         wholeWord: wholeWord(),
       }));
       await invoke("replace_in_files", { replacements, dryRun: false });
+      const count = totalMatches();
       setResults([]);
-    } catch (err) { setSearchError(`Replace failed: ${String(err)}`); }
+      toast.success(`Replaced ${count} match${count !== 1 ? "es" : ""} across ${uniqueFiles.length} file${uniqueFiles.length !== 1 ? "s" : ""}`);
+    } catch (err) {
+      const msg = `Replace failed: ${String(err)}`;
+      setSearchError(msg);
+      toast.error(msg);
+    }
   };
 
   const handleMatchClick = (file: string, line: number, column: number) => {
