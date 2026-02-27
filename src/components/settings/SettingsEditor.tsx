@@ -1722,17 +1722,24 @@ function SettingItem(props: {
   }
 
   // Get current value based on scope
+  // Handles nested settings via subSection (e.g., editor.inlayHints.enabled)
   const currentValue = createMemo(() => {
+    let section: unknown;
     if (props.scope === "folder" && props.folderPath) {
       const folderSettings = settings.getEffectiveSettingsForPath(props.folderPath);
-      const section = folderSettings[props.setting.section];
-      if (section && typeof section === "object") {
-        return (section as Record<string, unknown>)[props.setting.key] ?? props.setting.defaultValue;
-      }
+      section = folderSettings[props.setting.section];
+    } else {
+      section = settings.effectiveSettings()[props.setting.section];
     }
-    const section = settings.effectiveSettings()[props.setting.section];
     if (!section || typeof section !== "object") return props.setting.defaultValue;
-    return (section as Record<string, unknown>)[props.setting.key] ?? props.setting.defaultValue;
+    // Navigate into subSection if present (e.g., section="editor", subSection="inlayHints", key="enabled")
+    let target = section as Record<string, unknown>;
+    if (props.setting.subSection) {
+      const sub = target[props.setting.subSection];
+      if (!sub || typeof sub !== "object") return props.setting.defaultValue;
+      target = sub as Record<string, unknown>;
+    }
+    return target[props.setting.key] ?? props.setting.defaultValue;
   });
 
   // Check if modified from default
@@ -1802,19 +1809,40 @@ function SettingItem(props: {
   void _isDisabled; // Mark as intentionally unused
 
   // Update setting value based on scope
+  // Handles nested settings via subSection (e.g., editor.inlayHints.enabled)
   const updateValue = async (value: unknown) => {
-    if (props.scope === "folder" && props.folderPath) {
-      // @ts-expect-error Dynamic key access for settings
-      await settings.setFolderSetting(props.folderPath, props.setting.section, props.setting.key, value);
-    } else if (props.scope === "workspace" && settings.hasWorkspace()) {
-      // @ts-expect-error Dynamic key access for settings
-      await settings.setWorkspaceSetting(props.setting.section, props.setting.key, value);
-    } else {
+    if (props.setting.subSection) {
+      // For nested settings, we need to update the subSection object within the section
       const section = settings.effectiveSettings()[props.setting.section];
-      if (section && typeof section === "object") {
-        const newSection = { ...section, [props.setting.key]: value };
+      if (!section || typeof section !== "object") return;
+      const sectionObj = section as Record<string, unknown>;
+      const currentSub = (sectionObj[props.setting.subSection] ?? {}) as Record<string, unknown>;
+      const updatedSub = { ...currentSub, [props.setting.key]: value };
+      const newSection = { ...sectionObj, [props.setting.subSection]: updatedSub };
+      if (props.scope === "folder" && props.folderPath) {
+        // @ts-expect-error Dynamic key access for settings
+        await settings.setFolderSetting(props.folderPath, props.setting.section, props.setting.subSection, updatedSub);
+      } else if (props.scope === "workspace" && settings.hasWorkspace()) {
+        // @ts-expect-error Dynamic key access for settings
+        await settings.setWorkspaceSetting(props.setting.section, props.setting.subSection, updatedSub);
+      } else {
         // @ts-expect-error Dynamic section update
         await settings.updateSettings(props.setting.section, newSection);
+      }
+    } else {
+      if (props.scope === "folder" && props.folderPath) {
+        // @ts-expect-error Dynamic key access for settings
+        await settings.setFolderSetting(props.folderPath, props.setting.section, props.setting.key, value);
+      } else if (props.scope === "workspace" && settings.hasWorkspace()) {
+        // @ts-expect-error Dynamic key access for settings
+        await settings.setWorkspaceSetting(props.setting.section, props.setting.key, value);
+      } else {
+        const section = settings.effectiveSettings()[props.setting.section];
+        if (section && typeof section === "object") {
+          const newSection = { ...section, [props.setting.key]: value };
+          // @ts-expect-error Dynamic section update
+          await settings.updateSettings(props.setting.section, newSection);
+        }
       }
     }
   };
