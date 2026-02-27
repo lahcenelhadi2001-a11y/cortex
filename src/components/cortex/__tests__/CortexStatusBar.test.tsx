@@ -9,6 +9,12 @@ vi.mock("../icons", () => ({
   ),
 }));
 
+vi.mock("@/components/git/BranchStatusBarItem", () => ({
+  BranchStatusBarItem: () => (
+    <button aria-label="Source Control" data-testid="branch-status-bar-item">branch</button>
+  ),
+}));
+
 describe("CortexStatusBar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -88,12 +94,12 @@ describe("CortexStatusBar", () => {
 
       const layoutIcon = container.querySelector('[data-testid="icon-status-bar/layout-alt-04"]');
       const terminalIcon = container.querySelector('[data-testid="icon-status-bar/terminal-square"]');
-      const gitIcon = container.querySelector('[data-testid="icon-status-bar/git-branch-02"]');
+      const branchItem = container.querySelector('[data-testid="branch-status-bar-item"]');
       const infoIcon = container.querySelector('[data-testid="icon-status-bar/info-circle"]');
 
       expect(layoutIcon).toBeTruthy();
       expect(terminalIcon).toBeTruthy();
-      expect(gitIcon).toBeTruthy();
+      expect(branchItem).toBeTruthy();
       expect(infoIcon).toBeTruthy();
     });
 
@@ -256,19 +262,13 @@ describe("CortexStatusBar", () => {
       expect(onToggleTerminal).toHaveBeenCalled();
     });
 
-    it("should call onBranchClick when git icon is clicked", async () => {
-      const onBranchClick = vi.fn();
-
+    it("should render BranchStatusBarItem in place of git icon button", () => {
       const { container } = render(() => (
-        <CortexStatusBar onBranchClick={onBranchClick} />
+        <CortexStatusBar />
       ));
 
-      const branchButton = container.querySelector('[aria-label="Source Control"]');
-      if (branchButton) {
-        await fireEvent.click(branchButton);
-      }
-
-      expect(onBranchClick).toHaveBeenCalled();
+      const branchItem = container.querySelector('[data-testid="branch-status-bar-item"]');
+      expect(branchItem).toBeTruthy();
     });
 
     it("should call onNotificationClick when info icon is clicked", async () => {
@@ -301,19 +301,14 @@ describe("CortexStatusBar", () => {
       expect(onCodeNavHelp).toHaveBeenCalled();
     });
 
-    it("should fall back to onSourceControl when onBranchClick is not provided", async () => {
-      const onSourceControl = vi.fn();
-
+    it("should render BranchStatusBarItem which handles branch switching internally", () => {
       const { container } = render(() => (
-        <CortexStatusBar onSourceControl={onSourceControl} />
+        <CortexStatusBar />
       ));
 
-      const branchButton = container.querySelector('[aria-label="Source Control"]');
-      if (branchButton) {
-        await fireEvent.click(branchButton);
-      }
-
-      expect(onSourceControl).toHaveBeenCalled();
+      const branchItem = container.querySelector('[data-testid="branch-status-bar-item"]');
+      expect(branchItem).toBeTruthy();
+      expect(branchItem?.textContent).toContain("branch");
     });
 
     it("should not throw when clicking buttons without handlers", async () => {

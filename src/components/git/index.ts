@@ -146,6 +146,10 @@ export type { GitGraphProps } from "./GitGraph";
 // Create Tag Dialog
 export { CreateTagDialog } from "./CreateTagDialog";
 
+// Branch Status Bar Item
+export { BranchStatusBarItem } from "./BranchStatusBarItem";
+export type { BranchStatusBarItemProps } from "./BranchStatusBarItem";
+
 // Re-export MultiDiffEditor from editor components for git workflows
 export { MultiDiffEditor } from "../editor/MultiDiffEditor";
 export type { MultiDiffEditorProps, FileDiff, FileStatus } from "../editor/MultiDiffEditor";

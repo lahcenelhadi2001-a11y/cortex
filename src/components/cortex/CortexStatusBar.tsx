@@ -12,6 +12,7 @@
 
 import { Component, JSX, splitProps, Show, createSignal } from "solid-js";
 import { CortexSvgIcon, type CortexIconName } from "./icons";
+import { BranchStatusBarItem } from "@/components/git/BranchStatusBarItem";
 
 export type CortexStatusBarVariant = "default" | "active";
 
@@ -105,11 +106,7 @@ export const CortexStatusBar: Component<CortexStatusBarProps> = (props) => {
           title="Toggle Terminal"
         />
 
-        <StatusBarIconButton
-          iconName={"status-bar/git-branch-02" as CortexIconName}
-          onClick={local.onBranchClick ?? local.onSourceControl}
-          title="Source Control"
-        />
+        <BranchStatusBarItem />
 
         <StatusBarIconButton
           iconName={"status-bar/info-circle" as CortexIconName}
