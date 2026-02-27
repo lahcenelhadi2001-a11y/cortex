@@ -384,6 +384,8 @@ const SETTINGS_REGISTRY: SettingDefinition[] = [
   { id: "debug.openDebugOnSessionStart", key: "openDebugOnSessionStart", section: "debug", label: "Open Debug On Session Start", description: "Automatically open the debug panel when a debug session starts.", type: "boolean", defaultValue: DEFAULT_SETTINGS.debug.openDebugOnSessionStart },
   { id: "debug.focusWindowOnBreak", key: "focusWindowOnBreak", section: "debug", label: "Focus Window On Break", description: "Focus the window when a breakpoint is hit.", type: "boolean", defaultValue: DEFAULT_SETTINGS.debug.focusWindowOnBreak },
   { id: "debug.focusEditorOnBreak", key: "focusEditorOnBreak", section: "debug", label: "Focus Editor On Break", description: "Focus the editor when a breakpoint is hit.", type: "boolean", defaultValue: DEFAULT_SETTINGS.debug.focusEditorOnBreak },
+  { id: "debug.closeReadonlyTabsOnEnd", key: "closeReadonlyTabsOnEnd", section: "debug", label: "Close Readonly Tabs On End", description: "Automatically close readonly debug tabs when the debug session ends.", type: "boolean", defaultValue: DEFAULT_SETTINGS.debug.closeReadonlyTabsOnEnd },
+  { id: "debug.showInlineBreakpointCandidates", key: "showInlineBreakpointCandidates", section: "debug", label: "Show Inline Breakpoint Candidates", description: "Display inline breakpoint suggestions in the editor gutter.", type: "boolean", defaultValue: DEFAULT_SETTINGS.debug.showInlineBreakpointCandidates },
 
   // Workbench Editor Settings (Tab Sizing)
   { id: "workbench.editor.tabSizing", key: "tabSizing", section: "workbench" as keyof CortexSettings, subSection: "editor", label: "Tab Sizing", description: "Controls how tabs should be sized. 'fit' = minimum space needed, 'shrink' = shrink to fit with min width, 'fixed' = all tabs same width.", type: "enum", defaultValue: DEFAULT_WORKBENCH_EDITOR.tabSizing, enumValues: [
@@ -492,8 +494,12 @@ const TOC_TREE: TocItem[] = [
   {
     id: "debug",
     label: "Debug",
-    icon: "code",
+    icon: "bug",
     section: "debug",
+    children: [
+      { id: "debug.general", label: "General", section: "debug" },
+      { id: "debug.breakpoints", label: "Breakpoints", section: "debug" },
+    ],
   },
   {
     id: "extensions",

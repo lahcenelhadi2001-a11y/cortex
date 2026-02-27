@@ -15,12 +15,17 @@ vi.mock("@/context/SettingsContext", () => {
       linkedEditing: false, stickyScrollEnabled: false, foldingEnabled: true,
       showFoldingControls: "mouseover", guidesIndentation: true, guidesBracketPairs: true,
       verticalTabs: false,
+      inlayHints: {
+        enabled: true, fontSize: 0, fontFamily: "", showTypes: true,
+        showParameterNames: true, showReturnTypes: true, maxLength: 25, padding: false,
+      },
     },
     theme: {
       theme: "dark", iconTheme: "seti", accentColor: "#007acc", uiFontFamily: "Inter",
       uiFontSize: 13, zoomLevel: 1, sidebarPosition: "left", activityBarVisible: true,
       activityBarPosition: "side", statusBarVisible: true, tabBarVisible: true,
       breadcrumbsEnabled: true, wrapTabs: false, menuBarVisibility: "classic", panelPosition: "bottom",
+      breadcrumbs: { icons: true, filePath: "on", symbolPath: "on", symbolSortOrder: "position" },
     },
     terminal: {
       shellPath: "", fontFamily: "JetBrains Mono", fontSize: 13, lineHeight: 1.2,
@@ -42,7 +47,16 @@ vi.mock("@/context/SettingsContext", () => {
       enableSmartCommit: false, pruneOnFetch: false, postCommitCommand: "none",
     },
     ai: {}, zenMode: {}, screencastMode: {}, extensions: {}, vimEnabled: false,
-    languageOverrides: {}, debug: {}, search: {}, http: {}, commandPalette: {},
+    languageOverrides: {}, debug: {
+      toolbarLocation: "floating",
+      javascript: { autoAttachFilter: "disabled" },
+      openDebugOnSessionStart: true,
+      closeReadonlyTabsOnEnd: false,
+      focusWindowOnBreak: true,
+      focusEditorOnBreak: true,
+      showInlineBreakpointCandidates: true,
+      variableVisualizers: { enabled: true, hexBytesPerRow: 16, arrayPageSize: 50 },
+    }, search: {}, http: {}, commandPalette: {},
     workbench: { editor: {} },
   };
   const mockFn = () => { const f = (..._a: any[]) => (f as any)._rv; (f as any)._rv = undefined; (f as any).mockReturnValue = (v: any) => { (f as any)._rv = v; return f; }; return f; };
@@ -187,6 +201,11 @@ describe("SettingsEditor", () => {
     it("renders TOC sidebar with Security category", () => {
       const { getByText } = render(() => <SettingsEditor />);
       expect(getByText("Security")).toBeTruthy();
+    });
+
+    it("renders TOC sidebar with Debug category", () => {
+      const { getByText } = render(() => <SettingsEditor />);
+      expect(getByText("Debug")).toBeTruthy();
     });
 
     it("renders TOC sidebar with AI category", () => {
