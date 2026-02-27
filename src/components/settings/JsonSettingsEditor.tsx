@@ -334,20 +334,9 @@ const cortex_SETTINGS_SCHEMA = {
           description: "Show breadcrumbs",
           default: true
         },
-        titleBarStyle: {
-          type: "string",
-          description: "Title bar style: native uses OS decorations, custom renders a VS Code-style title bar",
-          enum: ["native", "custom"],
-          default: "custom"
-        },
-        auxiliaryBarVisible: {
-          type: "boolean",
-          description: "Auxiliary bar (secondary sidebar) visibility",
-          default: false
-        },
         breadcrumbs: {
           type: "object",
-          description: "Breadcrumbs navigation settings",
+          description: "Detailed breadcrumbs configuration",
           properties: {
             enabled: {
               type: "boolean",
@@ -356,13 +345,13 @@ const cortex_SETTINGS_SCHEMA = {
             },
             filePath: {
               type: "string",
-              description: "File path display mode: on = full path, off = hidden, last = only filename",
+              description: "File path display mode",
               enum: ["on", "off", "last"],
               default: "on"
             },
             symbolPath: {
               type: "string",
-              description: "Symbol path display mode: on = full hierarchy, off = hidden, last = only current symbol",
+              description: "Symbol path display mode",
               enum: ["on", "off", "last"],
               default: "on"
             },
@@ -375,26 +364,37 @@ const cortex_SETTINGS_SCHEMA = {
         },
         menuBarVisibility: {
           type: "string",
-          description: "Menu bar visibility mode",
+          description: "Controls the visibility of the menu bar",
           enum: ["classic", "compact", "toggle", "hidden"],
           default: "classic"
         },
         panelPosition: {
           type: "string",
-          description: "Panel position",
+          description: "Controls the position of the bottom panel",
           enum: ["bottom", "left", "right"],
           default: "bottom"
         },
         panelAlignment: {
           type: "string",
-          description: "Panel alignment",
+          description: "Controls the alignment of the bottom panel",
           enum: ["center", "left", "right", "justify"],
           default: "center"
+        },
+        titleBarStyle: {
+          type: "string",
+          description: "Title bar style: native uses OS decorations, custom renders a VS Code-style title bar",
+          enum: ["native", "custom"],
+          default: "custom"
         },
         commandCenterEnabled: {
           type: "boolean",
           description: "Show command center (search bar) in title bar",
           default: true
+        },
+        auxiliaryBarVisible: {
+          type: "boolean",
+          description: "Auxiliary bar (secondary sidebar) visibility",
+          default: false
         }
       }
     },
@@ -728,7 +728,7 @@ const cortex_SETTINGS_SCHEMA = {
         },
         restore: {
           type: "boolean",
-          description: "Restore the previous window state when exiting zen mode",
+          description: "Restore window state when exiting Zen Mode",
           default: true
         }
       }
@@ -751,13 +751,15 @@ const cortex_SETTINGS_SCHEMA = {
               type: "number",
               description: "Minimum width for tabs in shrink mode (pixels)",
               default: 80,
-              minimum: 40
+              minimum: 50,
+              maximum: 200
             },
             tabSizingFixedWidth: {
               type: "number",
               description: "Fixed width for tabs in fixed mode (pixels)",
               default: 120,
-              minimum: 40
+              minimum: 80,
+              maximum: 300
             },
             wrapTabs: {
               type: "boolean",
@@ -809,10 +811,280 @@ const cortex_SETTINGS_SCHEMA = {
         }
       }
     },
+    screencastMode: {
+      type: "object",
+      description: "Screencast mode settings",
+      properties: {
+        enabled: {
+          type: "boolean",
+          description: "Enable screencast mode",
+          default: false
+        },
+        showKeys: {
+          type: "boolean",
+          description: "Show key presses in screencast mode",
+          default: true
+        },
+        showMouse: {
+          type: "boolean",
+          description: "Show mouse clicks in screencast mode",
+          default: true
+        },
+        showCommands: {
+          type: "boolean",
+          description: "Show commands in screencast mode",
+          default: true
+        },
+        fontSize: {
+          type: "number",
+          description: "Font size for screencast mode overlay",
+          default: 24,
+          minimum: 12,
+          maximum: 72
+        },
+        duration: {
+          type: "number",
+          description: "Duration to show key presses (ms)",
+          default: 2000,
+          minimum: 500
+        }
+      }
+    },
+    extensions: {
+      type: "object",
+      description: "Extension-specific settings",
+      additionalProperties: {
+        type: "object",
+        additionalProperties: true
+      }
+    },
     vimEnabled: {
       type: "boolean",
       description: "Enable Vim keybindings",
       default: false
+    },
+    debug: {
+      type: "object",
+      description: "Debug settings",
+      properties: {
+        toolbarLocation: {
+          type: "string",
+          description: "Debug toolbar location",
+          enum: ["floating", "docked", "commandCenter", "hidden"],
+          default: "floating"
+        },
+        javascript: {
+          type: "object",
+          description: "JavaScript debug settings",
+          properties: {
+            autoAttachFilter: {
+              type: "string",
+              description: "Auto-attach filter for Node.js debugging",
+              enum: ["disabled", "always", "smart", "onlyWithFlag"],
+              default: "disabled"
+            }
+          }
+        },
+        openDebugOnSessionStart: {
+          type: "boolean",
+          description: "Open debug view on session start",
+          default: true
+        },
+        closeReadonlyTabsOnEnd: {
+          type: "boolean",
+          description: "Close read-only tabs when debug session ends",
+          default: false
+        },
+        focusWindowOnBreak: {
+          type: "boolean",
+          description: "Focus window when hitting a breakpoint",
+          default: true
+        },
+        focusEditorOnBreak: {
+          type: "boolean",
+          description: "Focus editor when hitting a breakpoint",
+          default: true
+        },
+        showInlineBreakpointCandidates: {
+          type: "boolean",
+          description: "Show inline breakpoint candidates",
+          default: true
+        },
+        variableVisualizers: {
+          type: "object",
+          description: "Variable visualizer settings for the debugger",
+          properties: {
+            enabled: {
+              type: "boolean",
+              description: "Enable custom variable visualizers",
+              default: true
+            },
+            hexBytesPerRow: {
+              type: "number",
+              description: "Number of bytes per row in hex viewer",
+              default: 16,
+              minimum: 1
+            },
+            arrayPageSize: {
+              type: "number",
+              description: "Page size for array pagination",
+              default: 50,
+              minimum: 10
+            }
+          }
+        }
+      }
+    },
+    search: {
+      type: "object",
+      description: "Search settings",
+      properties: {
+        exclude: {
+          type: "object",
+          description: "Glob patterns to exclude from search",
+          additionalProperties: { type: "boolean" }
+        },
+        useIgnoreFiles: {
+          type: "boolean",
+          description: "Use .gitignore and .ignore files when searching",
+          default: true
+        },
+        useGlobalIgnoreFiles: {
+          type: "boolean",
+          description: "Use global .gitignore files",
+          default: true
+        },
+        followSymlinks: {
+          type: "boolean",
+          description: "Follow symbolic links when searching",
+          default: true
+        },
+        contextLines: {
+          type: "number",
+          description: "Lines of context around search results",
+          default: 2,
+          minimum: 0
+        },
+        showLineNumbers: {
+          type: "boolean",
+          description: "Show line numbers in search results",
+          default: true
+        }
+      }
+    },
+    git: {
+      type: "object",
+      description: "Git settings",
+      properties: {
+        enabled: {
+          type: "boolean",
+          description: "Enable Git integration",
+          default: true
+        },
+        autofetch: {
+          type: "boolean",
+          description: "Enable automatic fetching",
+          default: true
+        },
+        autofetchPeriod: {
+          type: "number",
+          description: "Auto-fetch period in seconds",
+          default: 180,
+          minimum: 60
+        },
+        confirmSync: {
+          type: "boolean",
+          description: "Confirm before synchronizing",
+          default: true
+        },
+        enableSmartCommit: {
+          type: "boolean",
+          description: "Enable smart commit (stage all if nothing staged)",
+          default: true
+        },
+        pruneOnFetch: {
+          type: "boolean",
+          description: "Prune remote branches on fetch",
+          default: false
+        },
+        fetchTags: {
+          type: "boolean",
+          description: "Fetch tags when fetching",
+          default: true
+        },
+        followTagsWhenSync: {
+          type: "boolean",
+          description: "Follow tags when synchronizing",
+          default: false
+        },
+        postCommitCommand: {
+          type: "string",
+          description: "Action to run after commit",
+          enum: ["none", "push", "sync"],
+          default: "none"
+        },
+        defaultCloneDirectory: {
+          type: "string",
+          description: "Default directory for cloning repositories",
+          default: ""
+        },
+        branchSortOrder: {
+          type: "string",
+          description: "Branch sort order",
+          enum: ["alphabetically", "committerDate"],
+          default: "committerDate"
+        },
+        rebaseWhenSync: {
+          type: "boolean",
+          description: "Rebase when synchronizing",
+          default: false
+        }
+      }
+    },
+    http: {
+      type: "object",
+      description: "HTTP proxy settings",
+      properties: {
+        proxy: {
+          type: "string",
+          description: "HTTP proxy URL",
+          default: ""
+        },
+        proxyStrictSSL: {
+          type: "boolean",
+          description: "Strict SSL for proxy connections",
+          default: true
+        },
+        proxyAuthorization: {
+          type: ["string", "null"],
+          description: "Proxy authorization header value",
+          default: null
+        },
+        proxySupport: {
+          type: "string",
+          description: "Proxy support mode",
+          enum: ["off", "on", "fallback"],
+          default: "off"
+        }
+      }
+    },
+    commandPalette: {
+      type: "object",
+      description: "Command Palette / Quick Access settings",
+      properties: {
+        historyLength: {
+          type: "number",
+          description: "Number of history items to remember per provider",
+          default: 50,
+          minimum: 0,
+          maximum: 200
+        },
+        preserveInput: {
+          type: "boolean",
+          description: "Preserve input when reopening the palette",
+          default: false
+        }
+      }
     },
     languageOverrides: {
       type: "object",
