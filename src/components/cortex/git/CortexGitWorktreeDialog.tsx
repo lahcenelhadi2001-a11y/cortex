@@ -67,10 +67,14 @@ export const CortexGitWorktreeDialog: Component<CortexGitWorktreeDialogProps> = 
     }
   };
 
-  const closePrunePreview = () => {
-    if (pruneLoading()) return;
+  const resetPrunePreview = () => {
     setShowPrunePreview(false);
     setPrunePreview([]);
+  };
+
+  const closePrunePreview = () => {
+    if (pruneLoading()) return;
+    resetPrunePreview();
   };
 
   createEffect(() => {
@@ -80,8 +84,7 @@ export const CortexGitWorktreeDialog: Component<CortexGitWorktreeDialogProps> = 
     if (!props.open) {
       setError(null);
       setPendingRemove(null);
-      setShowPrunePreview(false);
-      setPrunePreview([]);
+      resetPrunePreview();
     }
   });
 
@@ -131,7 +134,7 @@ export const CortexGitWorktreeDialog: Component<CortexGitWorktreeDialogProps> = 
     setError(null);
     try {
       await gitWorktreePrune(props.repoPath, false);
-      closePrunePreview();
+      resetPrunePreview();
       await refreshWorktrees();
       props.onRefresh?.();
     } catch (err) {
@@ -215,6 +218,7 @@ export const CortexGitWorktreeDialog: Component<CortexGitWorktreeDialogProps> = 
         title="Prune Stale Worktrees?"
         size="sm"
         closeOnOverlay={false}
+        showFooter={true}
         footer={
           <div style={{ display: "flex", width: "100%", "justify-content": "flex-end", gap: "8px" }}>
             <CortexButton variant="ghost" size="sm" onClick={closePrunePreview} disabled={pruneLoading()}>

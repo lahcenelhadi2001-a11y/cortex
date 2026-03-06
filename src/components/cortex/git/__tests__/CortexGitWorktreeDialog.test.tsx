@@ -22,12 +22,15 @@ vi.mock("@/components/cortex/primitives/CortexModal", () => ({
     children?: JSX.Element;
     footer?: JSX.Element;
     onClose?: () => void;
+    showFooter?: boolean;
+    onConfirm?: () => void;
+    onCancel?: () => void;
   }) => (
     <Show when={props.open}>
       <div data-testid={`modal-${props.title ?? "untitled"}`}>
         <div>{props.title}</div>
         {props.children}
-        {props.footer}
+        <Show when={props.showFooter || props.onConfirm || props.onCancel}>{props.footer}</Show>
         <button onClick={props.onClose}>Close Modal</button>
       </div>
     </Show>
@@ -185,5 +188,65 @@ describe("CortexGitWorktreeDialog", () => {
     await vi.waitFor(() => {
       expect(mockGitWorktreePrune).toHaveBeenCalledWith("/test/repo", false);
     });
+  });
+
+  it("closes and resets the prune preview after a successful prune", async () => {
+    mockGitWorktreePrune.mockReset();
+    mockGitWorktreePrune
+      .mockResolvedValueOnce(["would prune /test/repo-stale"])
+      .mockResolvedValueOnce(["Removing /test/repo-stale"])
+      .mockResolvedValueOnce([]);
+
+    const onRefresh = vi.fn();
+    const { findByText, getByText, queryByTestId, queryByText } = render(() => (
+      <CortexGitWorktreeDialog open={true} repoPath="/test/repo" onClose={vi.fn()} onRefresh={onRefresh} />
+    ));
+
+    expect(await findByText("feature/guardrail")).toBeTruthy();
+
+    await fireEvent.click(getByText("Prune Stale Worktrees"));
+    await findByText("would prune /test/repo-stale");
+
+    await fireEvent.click(await findByText("Prune 1 Stale Worktree"));
+
+    await vi.waitFor(() => {
+      expect(mockGitWorktreePrune).toHaveBeenCalledWith("/test/repo", false);
+    });
+    await vi.waitFor(() => {
+      expect(queryByTestId("modal-Prune Stale Worktrees?")).toBeNull();
+    });
+    await vi.waitFor(() => {
+      expect(onRefresh).toHaveBeenCalled();
+    });
+
+    await fireEvent.click(getByText("Prune Stale Worktrees"));
+
+    await vi.waitFor(() => {
+      expect(mockGitWorktreePrune).toHaveBeenNthCalledWith(3, "/test/repo", true);
+    });
+    await findByText("No stale worktrees found.");
+    expect(queryByText("would prune /test/repo-stale")).toBeNull();
+  });
+
+  it("keeps the prune preview open when prune execution fails", async () => {
+    mockGitWorktreePrune.mockReset();
+    mockGitWorktreePrune
+      .mockResolvedValueOnce(["would prune /test/repo-stale"])
+      .mockRejectedValueOnce(new Error("cannot prune"));
+
+    const { findByText, getByText, getByTestId } = render(() => (
+      <CortexGitWorktreeDialog open={true} repoPath="/test/repo" onClose={vi.fn()} />
+    ));
+
+    expect(await findByText("feature/guardrail")).toBeTruthy();
+
+    await fireEvent.click(getByText("Prune Stale Worktrees"));
+    await findByText("would prune /test/repo-stale");
+
+    await fireEvent.click(await findByText("Prune 1 Stale Worktree"));
+
+    await findByText("Failed to prune worktrees: Error: cannot prune");
+    expect(getByTestId("modal-Prune Stale Worktrees?")).toBeTruthy();
+    expect(getByText("would prune /test/repo-stale")).toBeTruthy();
   });
 });
