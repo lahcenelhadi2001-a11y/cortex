@@ -52,6 +52,29 @@ export interface ContextServerConfig {
   autoConnect?: boolean;
 }
 
+export function validateContextServerConfig(config: ContextServerConfig): string | null {
+  if (config.serverType === "stdio") {
+    return "Local stdio MCP servers are disabled in the desktop renderer. Use the built-in MCP bridge or an HTTP/SSE server instead.";
+  }
+
+  if (config.serverType === "http" || config.serverType === "sse") {
+    if (!config.url?.trim()) {
+      return "URL is required for HTTP/SSE context servers";
+    }
+
+    try {
+      const parsed = new URL(config.url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return "Only http:// and https:// context server URLs are allowed.";
+      }
+    } catch {
+      return "Enter a valid context server URL.";
+    }
+  }
+
+  return null;
+}
+
 export interface ContextServerInfo {
   id: string;
   name: string;
@@ -249,6 +272,11 @@ export function ContextServerProvider(props: ParentProps) {
     setState("error", null);
 
     try {
+      const validationError = validateContextServerConfig(config);
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
       const id = await invoke<string>("mcp_add_server", {
         config: {
           name: config.name,

@@ -3,9 +3,43 @@
 //! This module creates webviews embedded directly within the main window,
 //! not as separate windows.
 
+use std::net::IpAddr;
+
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime, WebviewBuilder, WebviewUrl, command};
 use tracing::info;
+use url::Url;
+
+fn validate_browser_url(url: &str) -> Result<Url, String> {
+    let parsed = Url::parse(url).map_err(|e| format!("Invalid URL: {}", e))?;
+    match parsed.scheme() {
+        "http" | "https" => {}
+        scheme => {
+            return Err(format!(
+                "Embedded browser only supports http/https loopback URLs, got '{}'",
+                scheme
+            ));
+        }
+    }
+
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "Embedded browser URL must include a host".to_string())?;
+    let is_loopback_host = host.eq_ignore_ascii_case("localhost")
+        || host
+            .parse::<IpAddr>()
+            .map(|ip| ip.is_loopback())
+            .unwrap_or(false);
+
+    if !is_loopback_host {
+        return Err(
+            "Embedded browser rejected a non-loopback URL to avoid exposing Tauri IPC to remote pages"
+                .to_string(),
+        );
+    }
+
+    Ok(parsed)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrowserWebviewInfo {
@@ -73,16 +107,9 @@ pub async fn browser_create<R: Runtime>(
     }
 
     // Create webview builder with the URL
-    let webview_builder = WebviewBuilder::new(
-        &params.id,
-        WebviewUrl::External(
-            params
-                .url
-                .parse()
-                .map_err(|e| format!("Invalid URL: {}", e))?,
-        ),
-    )
-    .auto_resize();
+    let url = validate_browser_url(&params.url)?;
+
+    let webview_builder = WebviewBuilder::new(&params.id, WebviewUrl::External(url)).auto_resize();
 
     // Add the webview to the main window at the specified position
     let _webview = main_window
@@ -146,10 +173,7 @@ pub async fn browser_navigate<R: Runtime>(
         .get_webview(&params.id)
         .ok_or_else(|| format!("Webview not found: {}", params.id))?;
 
-    let url: tauri::Url = params
-        .url
-        .parse()
-        .map_err(|e| format!("Invalid URL: {}", e))?;
+    let url: tauri::Url = validate_browser_url(&params.url)?;
 
     webview
         .navigate(url)
@@ -338,4 +362,30 @@ pub async fn browser_reload<R: Runtime>(app: AppHandle<R>, id: String) -> Result
         .map_err(|e| format!("Failed to reload: {}", e))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_browser_url_allows_loopback_hosts() {
+        assert!(validate_browser_url("http://127.0.0.1:1420/welcome").is_ok());
+        assert!(validate_browser_url("https://localhost:9223/tools").is_ok());
+    }
+
+    #[test]
+    fn validate_browser_url_rejects_remote_hosts() {
+        let error = validate_browser_url("https://attacker.example/poc.html")
+            .expect_err("remote URLs should be rejected");
+        assert!(error.contains("non-loopback URL"));
+    }
+
+    #[test]
+    fn validate_browser_url_rejects_non_http_schemes() {
+        let error =
+            validate_browser_url("file:///tmp/poc.html").expect_err("file URLs should be rejected");
+        assert!(error.contains("loopback URLs"));
+    }
 }

@@ -10,6 +10,8 @@ use tauri::command;
 use tauri::{AppHandle, Emitter, Manager};
 use tracing::{info, warn};
 
+use crate::workspace::{validate_trusted_path_for_read, validate_trusted_path_for_write};
+
 /// A single search match
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchMatch {
@@ -30,27 +32,32 @@ pub struct SearchResult {
     pub total_matches: u32,
 }
 
+fn path_from_file_uri(uri: &str) -> PathBuf {
+    PathBuf::from(uri.strip_prefix("file://").unwrap_or(uri))
+}
+
 /// Replace all matches across multiple files
 #[command]
 pub async fn search_replace_all(
+    app: AppHandle,
     results: Vec<SearchResult>,
     replace_text: String,
     use_regex: bool,
     preserve_case: bool,
 ) -> Result<u32, String> {
+    let mut validated_results = Vec::with_capacity(results.len());
+    for result in results {
+        let validated_path =
+            validate_trusted_path_for_write(&app, path_from_file_uri(&result.uri)).await?;
+        validated_results.push((validated_path.to_string_lossy().to_string(), result.matches));
+    }
+
     tokio::task::spawn_blocking(move || {
         let mut total_replaced = 0;
 
-        for result in results {
-            let path = result.uri.strip_prefix("file://").unwrap_or(&result.uri);
-
-            match replace_in_file_internal(
-                path,
-                &result.matches,
-                &replace_text,
-                use_regex,
-                preserve_case,
-            ) {
+        for (path, matches) in validated_results {
+            match replace_in_file_internal(&path, &matches, &replace_text, use_regex, preserve_case)
+            {
                 Ok(count) => {
                     total_replaced += count;
                     info!(target: "search", "Replaced {} matches in {}", count, path);
@@ -71,15 +78,23 @@ pub async fn search_replace_all(
 /// Replace all matches in a single file
 #[command]
 pub async fn search_replace_in_file(
+    app: AppHandle,
     uri: String,
     matches: Vec<SearchMatch>,
     replace_text: String,
     use_regex: bool,
     preserve_case: bool,
 ) -> Result<u32, String> {
+    let validated_path = validate_trusted_path_for_write(&app, path_from_file_uri(&uri)).await?;
+
     tokio::task::spawn_blocking(move || {
-        let path = uri.strip_prefix("file://").unwrap_or(&uri);
-        replace_in_file_internal(path, &matches, &replace_text, use_regex, preserve_case)
+        replace_in_file_internal(
+            &validated_path.to_string_lossy(),
+            &matches,
+            &replace_text,
+            use_regex,
+            preserve_case,
+        )
     })
     .await
     .map_err(|e| format!("Failed to spawn search_replace_in_file task: {e}"))?
@@ -102,12 +117,17 @@ pub struct ReplaceMatchRequest {
 
 /// Replace a single match
 #[command]
-pub async fn search_replace_match(request: ReplaceMatchRequest) -> Result<(), String> {
+pub async fn search_replace_match(
+    app: AppHandle,
+    request: ReplaceMatchRequest,
+) -> Result<(), String> {
+    let validated_path =
+        validate_trusted_path_for_write(&app, path_from_file_uri(&request.uri)).await?;
+
     tokio::task::spawn_blocking(move || {
-        let path = request.uri.strip_prefix("file://").unwrap_or(&request.uri);
         let matches = vec![request.match_info];
         replace_in_file_internal(
-            path,
+            &validated_path.to_string_lossy(),
             &matches,
             &request.replace_text,
             request.use_regex,
@@ -359,19 +379,21 @@ pub async fn search_history_load(app: AppHandle) -> Result<SearchHistoryData, St
 
 /// Restore a file from its `.bak` backup created during replace
 #[command]
-pub async fn search_undo_replace(file_path: String) -> Result<(), String> {
+pub async fn search_undo_replace(app: AppHandle, file_path: String) -> Result<(), String> {
+    let validated_path = validate_trusted_path_for_write(&app, PathBuf::from(&file_path)).await?;
+
     tokio::task::spawn_blocking(move || {
-        let original = PathBuf::from(&file_path);
+        let original = validated_path;
         let bak = original.with_extension("bak");
 
         if !bak.exists() {
-            return Err(format!("No backup found for {}", file_path));
+            return Err(format!("No backup found for {}", original.display()));
         }
 
         fs::copy(&bak, &original).map_err(|e| format!("Failed to restore backup: {}", e))?;
         fs::remove_file(&bak).map_err(|e| format!("Failed to remove backup: {}", e))?;
 
-        info!(target: "search", "Restored {} from backup", file_path);
+        info!(target: "search", "Restored {} from backup", original.display());
         Ok(())
     })
     .await
@@ -764,17 +786,24 @@ fn search_directory_recursive(
 /// Generate a preview of replacements without modifying any files
 #[command]
 pub async fn search_replace_preview(
+    app: AppHandle,
     results: Vec<SearchResult>,
     replace_text: String,
     _use_regex: bool,
     preserve_case: bool,
 ) -> Result<ReplacePreviewResult, String> {
+    let mut validated_paths = Vec::with_capacity(results.len());
+    for result in &results {
+        let validated_path =
+            validate_trusted_path_for_read(&app, path_from_file_uri(&result.uri)).await?;
+        validated_paths.push(validated_path.to_string_lossy().to_string());
+    }
+
     tokio::task::spawn_blocking(move || {
         let mut entries = Vec::new();
         let mut grand_total_replacements: u32 = 0;
 
-        for result in &results {
-            let path = result.uri.strip_prefix("file://").unwrap_or(&result.uri);
+        for (result, path) in results.iter().zip(validated_paths.iter()) {
             let file_path = PathBuf::from(path);
 
             let content = match fs::read_to_string(&file_path) {
@@ -1383,6 +1412,12 @@ mod tests {
         assert_eq!(req.replace_text, "bar");
         assert!(!req.use_regex);
         assert!(!req.preserve_case);
+    }
+
+    #[test]
+    fn path_from_file_uri_strips_file_scheme() {
+        let path = path_from_file_uri("file:///tmp/example.txt");
+        assert_eq!(path, PathBuf::from("/tmp/example.txt"));
     }
 
     // ---- SearchFilterOptions deserialization ----

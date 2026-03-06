@@ -7,11 +7,34 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex as TokioMutex;
 use tracing::{error, info};
+use url::Url;
 
 use super::ContextServerState;
 use super::protocol::{McpClient, McpClientBuilder};
 use super::types::*;
 use crate::LazyState;
+
+fn validate_context_server_config(config: &ContextServerConfig) -> Result<(), String> {
+    match config.server_type {
+        ServerType::Stdio => Err(
+            "Renderer-configured stdio MCP servers are disabled. Use the built-in MCP bridge or an HTTP/SSE server instead.".to_string(),
+        ),
+        ServerType::Http | ServerType::Sse => {
+            let url = config
+                .url
+                .as_ref()
+                .ok_or_else(|| "URL is required for HTTP/SSE context servers".to_string())?;
+            let parsed = Url::parse(url).map_err(|e| format!("Invalid context server URL: {e}"))?;
+            match parsed.scheme() {
+                "http" | "https" => Ok(()),
+                scheme => Err(format!(
+                    "Unsupported context server URL scheme '{}'. Only http and https are allowed.",
+                    scheme
+                )),
+            }
+        }
+    }
+}
 
 // =====================
 // Server Management
@@ -23,6 +46,8 @@ pub async fn mcp_add_server(
     config: ContextServerConfig,
     state: State<'_, LazyState<ContextServerState>>,
 ) -> Result<String, String> {
+    validate_context_server_config(&config)?;
+
     let mut manager = state.get().0.lock().await;
     let id = manager.add_server(config);
     info!("Added context server: {}", id);
@@ -486,4 +511,70 @@ async fn get_client(
         .client
         .clone()
         .ok_or_else(|| format!("Server not connected: {}", server_id))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_context_server_config_rejects_stdio() {
+        let config = ContextServerConfig {
+            name: "local".to_string(),
+            server_type: ServerType::Stdio,
+            command: Some("npx".to_string()),
+            args: Some(vec![
+                "-y".to_string(),
+                "@modelcontextprotocol/server-memory".to_string(),
+            ]),
+            env: None,
+            url: None,
+            headers: None,
+            working_directory: None,
+            timeout_ms: None,
+            auto_connect: None,
+        };
+
+        let error = validate_context_server_config(&config).expect_err("stdio should be blocked");
+        assert!(error.contains("stdio MCP servers are disabled"));
+    }
+
+    #[test]
+    fn validate_context_server_config_accepts_https_servers() {
+        let config = ContextServerConfig {
+            name: "remote".to_string(),
+            server_type: ServerType::Http,
+            command: None,
+            args: None,
+            env: None,
+            url: Some("https://mcp.example.com/api".to_string()),
+            headers: None,
+            working_directory: None,
+            timeout_ms: None,
+            auto_connect: None,
+        };
+
+        assert!(validate_context_server_config(&config).is_ok());
+    }
+
+    #[test]
+    fn validate_context_server_config_rejects_non_http_urls() {
+        let config = ContextServerConfig {
+            name: "bad".to_string(),
+            server_type: ServerType::Sse,
+            command: None,
+            args: None,
+            env: None,
+            url: Some("file:///tmp/server.json".to_string()),
+            headers: None,
+            working_directory: None,
+            timeout_ms: None,
+            auto_connect: None,
+        };
+
+        let error =
+            validate_context_server_config(&config).expect_err("file URLs should be rejected");
+        assert!(error.contains("Only http and https are allowed"));
+    }
 }

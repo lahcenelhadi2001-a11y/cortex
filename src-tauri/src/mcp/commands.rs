@@ -8,6 +8,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::McpState;
 use super::bridge::McpBridgeState;
+use crate::workspace::validate_trusted_workspace_directory;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,12 +64,14 @@ pub async fn mcp_bridge_start(
     app: AppHandle<impl Runtime>,
     project_path: String,
 ) -> Result<(), String> {
+    let validated_project_path = validate_trusted_workspace_directory(&app, &project_path).await?;
+    let validated_project_path = validated_project_path.to_string_lossy().to_string();
     let state = app.state::<McpBridgeState>();
     let mut guard = state.0.lock().await;
     if guard.is_some() {
         return Ok(()); // already running
     }
-    let bridge = super::bridge::McpBridge::start(&project_path)
+    let bridge = super::bridge::McpBridge::start(&validated_project_path)
         .await
         .map_err(|e| format!("Failed to start MCP bridge: {e}"))?;
     *guard = Some(bridge);

@@ -12,6 +12,8 @@ use tokio::sync::Mutex;
 use tracing::{info, warn};
 use walkdir::WalkDir;
 
+use crate::workspace::validate_trusted_workspace_directory;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -551,7 +553,8 @@ pub async fn index_workspace(
     }
 
     // Initialize vector store
-    let ws_path = PathBuf::from(&workspace_path);
+    let ws_path = validate_trusted_workspace_directory(&app, Path::new(&workspace_path)).await?;
+    let workspace_path = ws_path.to_string_lossy().to_string();
     vector_store.init(&ws_path).await?;
 
     // Reset cancel flag

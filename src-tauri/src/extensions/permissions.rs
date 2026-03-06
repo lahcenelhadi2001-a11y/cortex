@@ -515,6 +515,13 @@ pub fn validate_manifest_permissions(
 #[derive(Clone)]
 pub struct PermissionsState(pub Arc<PermissionsManager>);
 
+fn renderer_permission_mutation_denied(operation: &str) -> String {
+    format!(
+        "{} are managed by backend-approved extension flows and cannot be changed from renderer IPC",
+        operation
+    )
+}
+
 // ============================================================================
 // Tauri Commands
 // ============================================================================
@@ -554,8 +561,10 @@ pub async fn plugin_grant_permission(
     permission: PermissionKind,
     scope: String,
 ) -> Result<PermissionGrant, String> {
-    let state = app.state::<PermissionsState>();
-    Ok(state.0.grant_permission(&extension_id, permission, &scope))
+    let _ = (app, extension_id, permission, scope);
+    Err(renderer_permission_mutation_denied(
+        "Extension permission grants",
+    ))
 }
 
 /// Revoke a specific permission from an extension.
@@ -624,11 +633,10 @@ pub async fn plugin_set_workspace_folders(
     app: AppHandle,
     folders: Vec<String>,
 ) -> Result<(), String> {
-    let state = app.state::<PermissionsState>();
-    let paths: Vec<PathBuf> = folders.into_iter().map(PathBuf::from).collect();
-    state.0.set_workspace_folders(paths);
-    info!("Workspace folders updated for permission validation");
-    Ok(())
+    let _ = (app, folders);
+    Err(renderer_permission_mutation_denied(
+        "Workspace permission roots",
+    ))
 }
 
 // ============================================================================
@@ -661,6 +669,12 @@ mod tests {
                 .unwrap_err()
                 .contains("does not have EditorWrite permission")
         );
+    }
+
+    #[test]
+    fn test_renderer_permission_mutation_denied_message() {
+        let message = renderer_permission_mutation_denied("Extension permission grants");
+        assert!(message.contains("backend-approved extension flows"));
     }
 
     #[test]

@@ -589,7 +589,7 @@ function AddServerDialog(props: AddServerDialogProps) {
   const [tab, setTab] = createSignal<"preset" | "custom">("preset");
   const [selectedPreset, setSelectedPreset] = createSignal<string | null>(null);
   const [name, setName] = createSignal("");
-  const [serverType, setServerType] = createSignal<ServerType>("stdio");
+  const [serverType, setServerType] = createSignal<ServerType>("http");
   const [command, setCommand] = createSignal("");
   const [args, setArgs] = createSignal("");
   const [url, setUrl] = createSignal("");

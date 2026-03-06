@@ -11,6 +11,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, command};
 use tracing::{error, info, warn};
 
+use crate::fs::security::{validate_path_for_read, validate_path_for_write};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -139,7 +141,7 @@ fn remove_dir_all_safe(path: &Path) -> Result<(), String> {
     fs::remove_dir_all(path).map_err(|e| format!("Failed to remove {:?}: {}", path, e))
 }
 
-fn trust_file_path(app: &AppHandle) -> Result<PathBuf, String> {
+fn trust_file_path<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     let app_data_dir = app.path().app_data_dir().unwrap_or_else(|_| {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -168,7 +170,7 @@ async fn write_trusted_workspaces(path: &Path, data: &TrustedWorkspaces) -> Resu
         .map_err(|e| format!("Failed to write trusted workspaces: {}", e))
 }
 
-fn trust_data_file_path(app: &AppHandle) -> Result<PathBuf, String> {
+fn trust_data_file_path<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     let app_data_dir = app.path().app_data_dir().unwrap_or_else(|_| {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -215,6 +217,73 @@ fn is_path_within(child: &str, parent: &str) -> bool {
     } else {
         child.starts_with(parent)
     }
+}
+
+fn trust_restrictions_enabled(data: &TrustedWorkspacesData) -> bool {
+    data.settings.enabled && !data.settings.trust_all_workspaces
+}
+
+fn trusted_path_allowed(data: &TrustedWorkspacesData, path: &Path) -> bool {
+    if !trust_restrictions_enabled(data) {
+        return true;
+    }
+
+    let candidate = path.to_string_lossy();
+    data.folders
+        .iter()
+        .any(|folder| is_path_within(candidate.as_ref(), &folder.path))
+}
+
+fn validate_trusted_path_against_data(
+    data: &TrustedWorkspacesData,
+    path: &Path,
+    operation: &str,
+) -> Result<(), String> {
+    if trusted_path_allowed(data, path) {
+        return Ok(());
+    }
+
+    Err(format!(
+        "Workspace trust blocked {} for '{}'. Trust the workspace before retrying.",
+        operation,
+        path.display()
+    ))
+}
+
+pub async fn validate_trusted_path_for_read<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    path: impl AsRef<Path>,
+) -> Result<PathBuf, String> {
+    let validated = validate_path_for_read(path.as_ref())?;
+    let data_path = trust_data_file_path(app)?;
+    let data = read_trust_data(&data_path).await;
+    validate_trusted_path_against_data(&data, &validated, "read access")?;
+    Ok(validated)
+}
+
+pub async fn validate_trusted_path_for_write<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    path: impl AsRef<Path>,
+) -> Result<PathBuf, String> {
+    let validated = validate_path_for_write(path.as_ref())?;
+    let data_path = trust_data_file_path(app)?;
+    let data = read_trust_data(&data_path).await;
+    validate_trusted_path_against_data(&data, &validated, "write access")?;
+    Ok(validated)
+}
+
+pub async fn validate_trusted_workspace_directory<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    workspace_path: impl AsRef<Path>,
+) -> Result<PathBuf, String> {
+    let validated = validate_trusted_path_for_read(app, workspace_path).await?;
+    if !validated.is_dir() {
+        return Err(format!(
+            "Workspace boundary check requires a directory path, got '{}'.",
+            validated.display()
+        ));
+    }
+    Ok(validated)
 }
 
 // ============================================================================
@@ -1282,5 +1351,75 @@ pub async fn restore_workspace_session(
             "Failed to read workspace session for '{}': {}",
             project_path, e
         )),
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    use tempfile::tempdir;
+
+    fn trusted_data_for(path: &Path) -> TrustedWorkspacesData {
+        TrustedWorkspacesData {
+            folders: vec![TrustedFolderInfo {
+                path: path.to_string_lossy().to_string(),
+                trusted_at: 0,
+                description: None,
+                trust_parent: false,
+            }],
+            settings: WorkspaceTrustSettings::default(),
+        }
+    }
+
+    #[test]
+    fn trusted_path_allowed_accepts_paths_inside_trusted_folder() {
+        let dir = tempdir().unwrap();
+        let trusted_root = dir.path().join("trusted");
+        let nested = trusted_root.join("src").join("lib.rs");
+        fs::create_dir_all(nested.parent().unwrap()).unwrap();
+        fs::write(&nested, "fn main() {}\n").unwrap();
+
+        let data = trusted_data_for(&trusted_root);
+        assert!(trusted_path_allowed(&data, &nested));
+    }
+
+    #[test]
+    fn trusted_path_allowed_rejects_paths_outside_trusted_folder() {
+        let dir = tempdir().unwrap();
+        let trusted_root = dir.path().join("trusted");
+        let outside = dir.path().join("outside.txt");
+        fs::create_dir_all(&trusted_root).unwrap();
+        fs::write(&outside, "secret\n").unwrap();
+
+        let data = trusted_data_for(&trusted_root);
+        let error = validate_trusted_path_against_data(&data, &outside, "write access")
+            .expect_err("outside path should be blocked");
+        assert!(error.contains("Workspace trust blocked write access"));
+    }
+
+    #[test]
+    fn trusted_path_allowed_respects_trust_all_workspaces() {
+        let dir = tempdir().unwrap();
+        let outside = dir.path().join("outside.txt");
+        fs::write(&outside, "secret\n").unwrap();
+
+        let mut data = TrustedWorkspacesData::default();
+        data.settings.trust_all_workspaces = true;
+
+        assert!(trusted_path_allowed(&data, &outside));
+    }
+
+    #[test]
+    fn trusted_path_allowed_respects_disabled_trust_system() {
+        let dir = tempdir().unwrap();
+        let outside = dir.path().join("outside.txt");
+        fs::write(&outside, "secret\n").unwrap();
+
+        let mut data = TrustedWorkspacesData::default();
+        data.settings.enabled = false;
+
+        assert!(trusted_path_allowed(&data, &outside));
     }
 }

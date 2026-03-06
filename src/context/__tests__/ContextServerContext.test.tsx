@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
+import { validateContextServerConfig } from "../ContextServerContext";
+
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
@@ -14,6 +16,39 @@ vi.mock("@tauri-apps/api/event", () => ({
 describe("ContextServerContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("config validation", () => {
+    it("rejects renderer-configured stdio servers", () => {
+      const error = validateContextServerConfig({
+        name: "local-mcp",
+        serverType: "stdio",
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-memory"],
+      });
+
+      expect(error).toContain("disabled in the desktop renderer");
+    });
+
+    it("accepts remote http servers with valid urls", () => {
+      const error = validateContextServerConfig({
+        name: "remote-mcp",
+        serverType: "http",
+        url: "https://mcp.example.com/api",
+      });
+
+      expect(error).toBeNull();
+    });
+
+    it("rejects non-http context server urls", () => {
+      const error = validateContextServerConfig({
+        name: "bad-mcp",
+        serverType: "sse",
+        url: "file:///tmp/server.json",
+      });
+
+      expect(error).toContain("Only http:// and https://");
+    });
   });
 
   describe("Server Types and Status", () => {
