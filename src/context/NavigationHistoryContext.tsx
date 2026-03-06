@@ -71,40 +71,49 @@ export function NavigationHistoryProvider(props: ParentProps) {
   
   const editor = useEditor();
 
+  const getActiveFilePath = () => {
+    const activeFile = editor.state.openFiles.find((file) => file.id === editor.state.activeFileId);
+    return activeFile?.path ?? null;
+  };
+
+  const recordLocation = (
+    location: Omit<NavigationLocation, "timestamp">,
+    { forceSignificant = false }: { forceSignificant?: boolean } = {},
+  ) => {
+    if (isNavigating()) return;
+
+    const currentHistory = history();
+    const currentIdx = currentIndex();
+    const currentLocation = currentIdx >= 0 ? currentHistory[currentIdx] : null;
+
+    if (currentLocation) {
+      const sameFile = currentLocation.filePath === location.filePath;
+      const samePosition = sameFile && currentLocation.line === location.line && currentLocation.column === location.column;
+      const nearbyLine = Math.abs(currentLocation.line - location.line) < SIGNIFICANT_LINE_DIFFERENCE;
+
+      if (samePosition || (sameFile && nearbyLine && !forceSignificant)) {
+        return;
+      }
+    }
+
+    const newLocation: NavigationLocation = {
+      ...location,
+      timestamp: Date.now(),
+    };
+
+    const truncatedHistory = currentHistory.slice(0, currentIdx + 1);
+    const newHistory = [...truncatedHistory, newLocation].slice(-MAX_HISTORY);
+
+    setHistory(newHistory);
+    setCurrentIndex(newHistory.length - 1);
+  };
+
   /**
    * Push a new location to the navigation history.
    * Ignores locations that are too close to the current location.
    */
   const pushLocation = (location: Omit<NavigationLocation, "timestamp">) => {
-    // Don't record navigation while we're programmatically navigating (back/forward)
-    if (isNavigating()) return;
-    
-    const currentHistory = history();
-    const currentIdx = currentIndex();
-    const currentLocation = currentIdx >= 0 ? currentHistory[currentIdx] : null;
-    
-    // Don't push if it's the same file and within a few lines of current location
-    if (currentLocation) {
-      const sameFile = currentLocation.filePath === location.filePath;
-      const nearbyLine = Math.abs(currentLocation.line - location.line) < SIGNIFICANT_LINE_DIFFERENCE;
-      
-      if (sameFile && nearbyLine) {
-        return;
-      }
-    }
-    
-    const newLocation: NavigationLocation = {
-      ...location,
-      timestamp: Date.now(),
-    };
-    
-    // Truncate forward history when we add a new location (standard browser behavior)
-    // Keep only history up to current index, then add the new location
-    const truncatedHistory = currentHistory.slice(0, currentIdx + 1);
-    const newHistory = [...truncatedHistory, newLocation].slice(-MAX_HISTORY);
-    
-    setHistory(newHistory);
-    setCurrentIndex(newHistory.length - 1);
+    recordLocation(location);
   };
 
   /**
@@ -218,33 +227,67 @@ export function NavigationHistoryProvider(props: ParentProps) {
     // Listen for significant navigation events (go to definition, go to symbol, etc.)
     const handleSignificantNavigation = (event: CustomEvent<{ filePath: string; line: number; column: number }>) => {
       const { filePath, line, column } = event.detail;
-      // Force push even if within line threshold (these are intentional navigations)
-      const newLocation: NavigationLocation = {
-        filePath,
-        line,
-        column,
-        timestamp: Date.now(),
-      };
-      
-      const currentHistory = history();
-      const currentIdx = currentIndex();
-      const truncatedHistory = currentHistory.slice(0, currentIdx + 1);
-      const newHistory = [...truncatedHistory, newLocation].slice(-MAX_HISTORY);
-      
-      setHistory(newHistory);
-      setCurrentIndex(newHistory.length - 1);
+      recordLocation({ filePath, line, column }, { forceSignificant: true });
+    };
+
+    const handleEditorGotoLine = (event: CustomEvent<{ line: number; column?: number }>) => {
+      const filePath = getActiveFilePath();
+      if (!filePath) return;
+
+      recordLocation(
+        {
+          filePath,
+          line: event.detail.line,
+          column: event.detail.column ?? 1,
+        },
+        { forceSignificant: true },
+      );
+    };
+
+    const handleBufferSearchGoto = (event: CustomEvent<{ line: number; column?: number }>) => {
+      const filePath = getActiveFilePath();
+      if (!filePath) return;
+
+      recordLocation(
+        {
+          filePath,
+          line: event.detail.line,
+          column: event.detail.column ?? 1,
+        },
+        { forceSignificant: true },
+      );
+    };
+
+    const handleOutlineNavigate = (event: CustomEvent<{ fileId: string; line: number; column: number }>) => {
+      const file = editor.state.openFiles.find((openFile) => openFile.id === event.detail.fileId);
+      if (!file) return;
+
+      recordLocation(
+        {
+          filePath: file.path,
+          line: event.detail.line,
+          column: event.detail.column,
+        },
+        { forceSignificant: true },
+      );
     };
 
     window.addEventListener("navigation:back", handleNavigationBack);
     window.addEventListener("navigation:forward", handleNavigationForward);
     window.addEventListener("editor:cursor-changed", handleCursorChange as EventListener);
     window.addEventListener("navigation:significant", handleSignificantNavigation as EventListener);
+    window.addEventListener("editor:goto-line", handleEditorGotoLine as EventListener);
+    window.addEventListener("buffer-search:goto", handleBufferSearchGoto as EventListener);
+    window.addEventListener("outline:navigate", handleOutlineNavigate as EventListener);
 
     onCleanup(() => {
       window.removeEventListener("navigation:back", handleNavigationBack);
       window.removeEventListener("navigation:forward", handleNavigationForward);
       window.removeEventListener("editor:cursor-changed", handleCursorChange as EventListener);
       window.removeEventListener("navigation:significant", handleSignificantNavigation as EventListener);
+      window.removeEventListener("editor:goto-line", handleEditorGotoLine as EventListener);
+      window.removeEventListener("buffer-search:goto", handleBufferSearchGoto as EventListener);
+      window.removeEventListener("outline:navigate", handleOutlineNavigate as EventListener);
     });
   });
 

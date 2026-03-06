@@ -1,6 +1,7 @@
 import { createSignal, createEffect, createMemo, For, Show, onMount, onCleanup, JSX } from "solid-js";
 import { useCommands } from "@/context/CommandContext";
 import { useOutline, type DocumentSymbol, type SymbolKind } from "@/context/OutlineContext";
+import { useEditor } from "@/context/EditorContext";
 import { Icon } from "@/components/ui/Icon";
 import "@/styles/quickinput.css";
 
@@ -96,11 +97,14 @@ function highlightMatches(text: string, matches?: number[]): JSX.Element {
 
 export function GoToSymbolDialog() {
   const { showDocumentSymbolPicker, setShowDocumentSymbolPicker } = useCommands();
-  const { state: outlineState, navigateToSymbol } = useOutline();
+  const { state: outlineState, navigateToSymbol, fetchSymbols } = useOutline();
+  const { state: editorState } = useEditor();
   const [query, setQuery] = createSignal("");
   const [selectedIndex, setSelectedIndex] = createSignal(0);
   let inputRef: HTMLInputElement | undefined;
   let listRef: HTMLDivElement | undefined;
+
+  const activeFile = createMemo(() => editorState.openFiles.find((file) => file.id === editorState.activeFileId));
 
   const filteredSymbols = createMemo(() => {
     const flat = flattenSymbols(outlineState.symbols);
@@ -114,6 +118,14 @@ export function GoToSymbolDialog() {
   });
 
   createEffect(() => { if (showDocumentSymbolPicker()) { setQuery(""); setSelectedIndex(0); setTimeout(() => inputRef?.focus(), 10); } });
+  createEffect(() => {
+    const file = activeFile();
+    if (!showDocumentSymbolPicker() || !file) {
+      return;
+    }
+
+    void fetchSymbols(file.id, file.content, file.language);
+  });
   createEffect(() => { query(); setSelectedIndex(0); });
   createEffect(() => { const el = listRef?.querySelectorAll("[data-symbol-item]")[selectedIndex()] as HTMLElement; el?.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
 
@@ -153,7 +165,13 @@ export function GoToSymbolDialog() {
                 <p style={{ "font-size": "13px", color: "var(--jb-text-muted-color)" }}>Loading symbols...</p>
               </div>
             </Show>
-            <Show when={!outlineState.loading && filteredSymbols().length === 0}>
+            <Show when={!outlineState.loading && outlineState.error && filteredSymbols().length === 0}>
+              <div style={{ padding: "16px", "text-align": "center" }}>
+                <p style={{ "font-size": "13px", color: "var(--cortex-error)" }}>Failed to load symbols</p>
+                <p style={{ "font-size": "12px", color: "var(--jb-text-muted-color)", margin: "6px 0 0" }}>{outlineState.error}</p>
+              </div>
+            </Show>
+            <Show when={!outlineState.loading && !outlineState.error && filteredSymbols().length === 0}>
               <div style={{ padding: "16px", "text-align": "center" }}>
                 <p style={{ "font-size": "13px", color: "var(--jb-text-muted-color)" }}>
                   {query().replace(/^@/, "").trim() ? "No matching symbols" : outlineState.symbols.length === 0 ? "No symbols in this file" : "Type to filter symbols"}

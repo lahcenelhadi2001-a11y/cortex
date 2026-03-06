@@ -137,6 +137,34 @@ function resolveSearchResultPath(projectPath: string | null | undefined, filePat
   return projectPath ? `${projectPath}/${filePath}` : filePath;
 }
 
+const SEARCH_CONTEXT_MENU_GUTTER = 8;
+const SEARCH_CONTEXT_MENU_WIDTH = 240;
+const SEARCH_CONTEXT_MENU_ITEM_HEIGHT = 32;
+const SEARCH_CONTEXT_MENU_DIVIDER_HEIGHT = 9;
+
+function estimateContextMenuHeight(hasMatch: boolean, hasFile: boolean): number {
+  let actionCount = 0;
+  if (hasMatch) actionCount += 2;
+  if (hasFile) actionCount += 3;
+
+  const dividerCount = hasMatch && hasFile ? 1 : 0;
+  return actionCount * SEARCH_CONTEXT_MENU_ITEM_HEIGHT + dividerCount * SEARCH_CONTEXT_MENU_DIVIDER_HEIGHT + 16;
+}
+
+function clampPopupPosition(x: number, y: number, width: number, height: number) {
+  if (typeof window === "undefined") {
+    return { x, y };
+  }
+
+  const maxX = Math.max(SEARCH_CONTEXT_MENU_GUTTER, window.innerWidth - width - SEARCH_CONTEXT_MENU_GUTTER);
+  const maxY = Math.max(SEARCH_CONTEXT_MENU_GUTTER, window.innerHeight - height - SEARCH_CONTEXT_MENU_GUTTER);
+
+  return {
+    x: Math.min(Math.max(SEARCH_CONTEXT_MENU_GUTTER, x), maxX),
+    y: Math.min(Math.max(SEARCH_CONTEXT_MENU_GUTTER, y), maxY),
+  };
+}
+
 function applyPreserveCase(original: string, replacement: string): string {
   // Detect case pattern of original
   const isAllUpper = original === original.toUpperCase() && original !== original.toLowerCase();
@@ -213,6 +241,7 @@ export function SearchSidebar() {
   const [useRegex, setUseRegex] = createSignal(false);
   const [preserveCase, setPreserveCase] = createSignal(false);
   const [searchOpenEditorsOnly, setSearchOpenEditorsOnly] = createSignal(false);
+  const [hoveredReplaceFile, setHoveredReplaceFile] = createSignal<string | null>(null);
   
   // Context lines - file content cache for displaying surrounding lines
   const [fileContentCache, setFileContentCache] = createSignal<Record<string, string[]>>({});
@@ -385,6 +414,7 @@ export function SearchSidebar() {
   };
   
   let inputRef: HTMLInputElement | undefined;
+  let replaceInputRef: HTMLInputElement | undefined;
   let resultsContainerRef: HTMLDivElement | undefined;
   let searchTimeout: number | undefined;
   let abortController: AbortController | null = null;
@@ -414,7 +444,7 @@ export function SearchSidebar() {
     // Listen for search:focus-replace to show and focus replace input
     const handleFocusReplace = () => {
       setShowReplace(true);
-      setTimeout(() => inputRef?.focus(), 100);
+      setTimeout(() => replaceInputRef?.focus(), 100);
     };
     window.addEventListener("search:focus-replace", handleFocusReplace);
     onCleanup(() => window.removeEventListener("search:focus-replace", handleFocusReplace));
@@ -576,6 +606,8 @@ export function SearchSidebar() {
         const expanded = new Set<string>();
         searchResults.slice(0, 3).forEach((r: SearchResult) => expanded.add(r.file));
         setExpandedFiles(expanded);
+        setExpandedTreePaths(new Set<string>());
+        setHoveredReplaceFile(null);
       });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -667,10 +699,18 @@ export function SearchSidebar() {
   const handleContextMenu = (e: MouseEvent, file: string | null, match: SearchMatch | null) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const position = clampPopupPosition(
+      e.clientX,
+      e.clientY,
+      SEARCH_CONTEXT_MENU_WIDTH,
+      estimateContextMenuHeight(Boolean(match), Boolean(file)),
+    );
+
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: position.x,
+      y: position.y,
       file,
       match,
     });
@@ -796,7 +836,14 @@ export function SearchSidebar() {
     const navigateToMatch = () => {
       if (matchStart !== undefined && matchEnd !== undefined) {
         window.dispatchEvent(new CustomEvent("buffer-search:goto", {
-          detail: { line, start: matchStart, end: matchEnd }
+          detail: {
+            line,
+            column,
+            start: matchStart,
+            end: matchEnd,
+            length: Math.max(matchEnd - matchStart, 1),
+            relativeToLine: true,
+          }
         }));
       } else {
         window.dispatchEvent(new CustomEvent("editor:goto-line", {
@@ -1303,6 +1350,7 @@ export function SearchSidebar() {
                   type="text"
                   placeholder="Replace"
                   aria-label="Replace"
+                  ref={replaceInputRef}
                   value={replaceText()}
                   onInput={(e) => setReplaceText(e.currentTarget.value)}
                   style={inputInnerStyle}
@@ -1314,7 +1362,11 @@ export function SearchSidebar() {
         
         {/* Filter Suggestions Dropdown */}
         <Show when={showFilterSuggestions() && (getFilteredSuggestions()?.length ?? 0) > 0}>
-          <div style={mergeStyles(ui.popup, { "margin-top": "4px" })}>
+          <div
+            role="listbox"
+            aria-label="Search filters"
+            style={mergeStyles(ui.popup, { "margin-top": "4px" })}
+          >
             <div style={{
               padding: `${tokens.spacing.sm} ${tokens.spacing.md}`,
               "font-size": "9px",
@@ -1327,6 +1379,8 @@ export function SearchSidebar() {
             <For each={getFilteredSuggestions()}>
               {(suggestion, index) => (
                 <button
+                  role="option"
+                  aria-selected={filterSuggestionIndex() === index()}
                   style={{
                     width: "100%",
                     display: "flex",
@@ -1651,12 +1705,16 @@ export function SearchSidebar() {
                       style={fileRowStyle(expandedFiles().has((item as { type: 'file'; file: string }).file))}
                       onClick={() => toggleFile((item as { type: 'file'; file: string }).file)}
                       onContextMenu={(e) => handleContextMenu(e, (item as { type: 'file'; file: string }).file, null)}
+                      onFocus={() => setHoveredReplaceFile((item as { type: 'file'; file: string }).file)}
+                      onBlur={() => setHoveredReplaceFile((current) => current === (item as { type: 'file'; file: string }).file ? null : current)}
                       onMouseEnter={(e) => {
+                        setHoveredReplaceFile((item as { type: 'file'; file: string }).file);
                         if (!expandedFiles().has((item as { type: 'file'; file: string }).file)) {
                           e.currentTarget.style.background = tokens.colors.interactive.hover;
                         }
                       }}
                       onMouseLeave={(e) => {
+                        setHoveredReplaceFile((current) => current === (item as { type: 'file'; file: string }).file ? null : current);
                         if (!expandedFiles().has((item as { type: 'file'; file: string }).file)) {
                           e.currentTarget.style.background = "transparent";
                         }
@@ -1702,7 +1760,7 @@ export function SearchSidebar() {
                       <Show when={showReplace()}>
                         <button
                           style={{ 
-                            opacity: "0",
+                            opacity: hoveredReplaceFile() === (item as { type: 'file'; file: string }).file ? "1" : "0",
                             padding: "2px 6px",
                             "font-size": "10px",
                             "border-radius": tokens.radius.sm,
@@ -1710,8 +1768,11 @@ export function SearchSidebar() {
                             background: "transparent",
                             cursor: "pointer",
                             color: tokens.colors.text.muted,
+                            "pointer-events": hoveredReplaceFile() === (item as { type: 'file'; file: string }).file ? "auto" : "none",
                             transition: "opacity var(--cortex-transition-fast)",
                           }}
+                          tabIndex={hoveredReplaceFile() === (item as { type: 'file'; file: string }).file ? 0 : -1}
+                          aria-label="Replace in file"
                           onClick={async (e) => {
                             e.stopPropagation();
                             const success = await replaceInFile((item as { type: 'file'; file: string }).file);
@@ -1722,6 +1783,8 @@ export function SearchSidebar() {
                               await performSearch(query());
                             }
                           }}
+                          onFocus={() => setHoveredReplaceFile((item as { type: 'file'; file: string }).file)}
+                          onBlur={() => setHoveredReplaceFile((current) => current === (item as { type: 'file'; file: string }).file ? null : current)}
                           title="Replace in file"
                           onMouseEnter={(e) => e.currentTarget.style.background = tokens.colors.interactive.hover}
                           onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
@@ -1872,18 +1935,24 @@ export function SearchSidebar() {
       {/* Context Menu */}
       <Show when={contextMenu().visible}>
         <div 
+          role="menu"
+          aria-label="Search result actions"
           style={{
             position: "fixed",
             left: `${contextMenu().x}px`,
             top: `${contextMenu().y}px`,
             "z-index": "1000",
             "min-width": "180px",
+            "max-width": `calc(100vw - ${SEARCH_CONTEXT_MENU_GUTTER * 2}px)`,
+            "max-height": `calc(100vh - ${SEARCH_CONTEXT_MENU_GUTTER * 2}px)`,
+            overflow: "auto",
             ...ui.popup,
           }}
           onClick={(e) => e.stopPropagation()}
         >
           <Show when={contextMenu().match}>
             <button
+              role="menuitem"
               style={contextMenuItemStyle}
               onClick={handleCopyMatch}
               onMouseEnter={(e) => e.currentTarget.style.background = tokens.colors.interactive.hover}
@@ -1893,6 +1962,7 @@ export function SearchSidebar() {
               Copy Match
             </button>
             <button
+              role="menuitem"
               style={contextMenuItemStyle}
               onClick={handleCopyLine}
               onMouseEnter={(e) => e.currentTarget.style.background = tokens.colors.interactive.hover}
@@ -1905,6 +1975,7 @@ export function SearchSidebar() {
           </Show>
           <Show when={contextMenu().file}>
             <button
+              role="menuitem"
               style={contextMenuItemStyle}
               onClick={handleCopyFilePath}
               onMouseEnter={(e) => e.currentTarget.style.background = tokens.colors.interactive.hover}
@@ -1914,6 +1985,7 @@ export function SearchSidebar() {
               Copy Path
             </button>
             <button
+              role="menuitem"
               style={contextMenuItemStyle}
               onClick={handleCopyRelativePath}
               onMouseEnter={(e) => e.currentTarget.style.background = tokens.colors.interactive.hover}
@@ -1923,6 +1995,7 @@ export function SearchSidebar() {
               Copy Relative Path
             </button>
             <button
+              role="menuitem"
               style={contextMenuItemStyle}
               onClick={handleCopyFileMatches}
               onMouseEnter={(e) => e.currentTarget.style.background = tokens.colors.interactive.hover}

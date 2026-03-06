@@ -111,9 +111,22 @@ export function EditorEventHandlers(props: EditorEventHandlersProps): null {
     // =========================================================================
 
     const handleBufferSearchGoto = (
-      e: CustomEvent<{ line: number; start: number; end: number }>,
+      e: CustomEvent<{ line: number; column?: number; length?: number; start: number; end: number; relativeToLine?: boolean }>,
     ) => {
-      const { line, start, end } = e.detail;
+      const { line, column = 1, length = 0, start, end, relativeToLine } = e.detail;
+
+      if (relativeToLine) {
+        editor.setSelection({
+          startLineNumber: line,
+          startColumn: column,
+          endLineNumber: line,
+          endColumn: column + Math.max(length, 1),
+        });
+        editor.revealLineInCenter(line);
+        editor.focus();
+        return;
+      }
+
       const model = editor.getModel();
       if (!model) return;
 
