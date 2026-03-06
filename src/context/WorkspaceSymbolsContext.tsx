@@ -28,6 +28,12 @@ import { getProjectPath } from "@/utils/workspace";
 
 const symbolsLogger = createLogger("WorkspaceSymbols");
 
+const WORKSPACE_SYMBOL_STATS_COMMAND = "workspace_symbols_get_stats";
+
+function isMissingWorkspaceSymbolsStatsCommand(message: string): boolean {
+  return message.includes(`Command ${WORKSPACE_SYMBOL_STATS_COMMAND} not found`);
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -96,8 +102,8 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
     return workspacePath.length > 0 ? workspacePath : null;
   };
 
-  onMount(async () => {
-    await refreshStats();
+  onMount(() => {
+    void refreshStatsInternal(true).catch(() => undefined);
   });
 
   const search = async (
@@ -106,6 +112,7 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
   ): Promise<WorkspaceSymbol[]> => {
     const workspacePath = resolveWorkspacePath();
     if (!workspacePath) {
+      setError(null);
       setSymbols([]);
       setIndexed(false);
       return [];
@@ -154,6 +161,7 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
   const clearIndex = async (): Promise<void> => {
     const workspacePath = resolveWorkspacePath();
     if (!workspacePath) {
+      setError(null);
       setSymbols([]);
       setStats(null);
       setIndexed(false);
@@ -176,13 +184,21 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
   };
 
   const refreshStats = async (): Promise<void> => {
+    return refreshStatsInternal(false);
+  };
+
+  const refreshStatsInternal = async (
+    suppressMissingCommandError: boolean,
+  ): Promise<void> => {
     const workspacePath = resolveWorkspacePath();
     if (!workspacePath) {
+      setError(null);
       setStats(null);
       setIndexed(false);
       return;
     }
 
+    setError(null);
     try {
       const result = await workspaceSymbolsGetStats(workspacePath);
       setStats(result);
@@ -190,7 +206,17 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : String(err);
+      if (suppressMissingCommandError && isMissingWorkspaceSymbolsStatsCommand(message)) {
+        setError(null);
+        setStats(null);
+        setIndexed(false);
+        return;
+      }
       symbolsLogger.error("Failed to refresh stats:", message);
+      setStats(null);
+      setIndexed(false);
+      setError(message);
+      throw err;
     }
   };
 

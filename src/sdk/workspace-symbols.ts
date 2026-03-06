@@ -46,7 +46,7 @@ export async function workspaceSymbolsSearch(
     workspacePath,
     query,
     maxResults: maxResults ?? 100,
-  }, { fallback: [], silent: true });
+  }, { silent: true });
 }
 
 /**
@@ -57,7 +57,6 @@ export async function workspaceSymbolsIndex(
   workspacePath: string,
 ): Promise<IndexStats> {
   return safeInvoke<IndexStats>("workspace_symbols_index", { workspacePath }, {
-    fallback: { totalSymbols: 0, totalFiles: 0, lastIndexed: null, indexed: false },
     silent: true,
   });
 }
@@ -69,7 +68,6 @@ export async function workspaceSymbolsClear(
   workspacePath: string,
 ): Promise<void> {
   return safeInvoke<void>("workspace_symbols_clear", { workspacePath }, {
-    fallback: undefined,
     silent: true,
   });
 }
@@ -81,7 +79,6 @@ export async function workspaceSymbolsGetStats(
   workspacePath: string,
 ): Promise<IndexStats> {
   return safeInvoke<IndexStats>("workspace_symbols_get_stats", { workspacePath }, {
-    fallback: { totalSymbols: 0, totalFiles: 0, lastIndexed: null, indexed: false },
     silent: true,
   });
 }
