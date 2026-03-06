@@ -15,8 +15,16 @@ import {
   onMount,
   JSX,
 } from "solid-js";
-import { invoke } from "@tauri-apps/api/core";
 import { createLogger } from "../utils/logger";
+import {
+  workspaceSymbolsClear,
+  workspaceSymbolsGetStats,
+  workspaceSymbolsIndex,
+  workspaceSymbolsSearch,
+  type IndexStats,
+  type WorkspaceSymbolEntry,
+} from "@/sdk/workspace-symbols";
+import { getProjectPath } from "@/utils/workspace";
 
 const symbolsLogger = createLogger("WorkspaceSymbols");
 
@@ -52,21 +60,7 @@ export type SymbolKind =
   | "operator"
   | "typeParameter";
 
-export interface WorkspaceSymbol {
-  name: string;
-  kind: SymbolKind;
-  filePath: string;
-  line: number;
-  column: number;
-  containerName: string | null;
-}
-
-export interface IndexStats {
-  totalSymbols: number;
-  totalFiles: number;
-  indexedAt: number;
-  durationMs: number;
-}
+export interface WorkspaceSymbol extends WorkspaceSymbolEntry {}
 
 interface WorkspaceSymbolsState {
   symbols: WorkspaceSymbol[];
@@ -97,6 +91,11 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
   const [stats, setStats] = createSignal<IndexStats | null>(null);
   const [indexed, setIndexed] = createSignal(false);
 
+  const resolveWorkspacePath = (): string | null => {
+    const workspacePath = getProjectPath().trim();
+    return workspacePath.length > 0 ? workspacePath : null;
+  };
+
   onMount(async () => {
     await refreshStats();
   });
@@ -105,15 +104,20 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
     query: string,
     maxResults?: number,
   ): Promise<WorkspaceSymbol[]> => {
+    const workspacePath = resolveWorkspacePath();
+    if (!workspacePath) {
+      setSymbols([]);
+      setIndexed(false);
+      return [];
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<WorkspaceSymbol[]>(
-        "workspace_symbols_search",
-        {
-          query,
-          maxResults: maxResults ?? null,
-        },
+      const result = await workspaceSymbolsSearch(
+        workspacePath,
+        query,
+        maxResults,
       );
       setSymbols(result);
       return result;
@@ -132,11 +136,9 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<IndexStats>("workspace_symbols_index", {
-        rootPath,
-      });
+      const result = await workspaceSymbolsIndex(rootPath);
       setStats(result);
-      setIndexed(true);
+      setIndexed(result.indexed);
       return result;
     } catch (err) {
       const message =
@@ -150,9 +152,17 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
   };
 
   const clearIndex = async (): Promise<void> => {
+    const workspacePath = resolveWorkspacePath();
+    if (!workspacePath) {
+      setSymbols([]);
+      setStats(null);
+      setIndexed(false);
+      return;
+    }
+
     setError(null);
     try {
-      await invoke("workspace_symbols_clear");
+      await workspaceSymbolsClear(workspacePath);
       setSymbols([]);
       setStats(null);
       setIndexed(false);
@@ -166,10 +176,17 @@ export function WorkspaceSymbolsProvider(props: { children: JSX.Element }) {
   };
 
   const refreshStats = async (): Promise<void> => {
+    const workspacePath = resolveWorkspacePath();
+    if (!workspacePath) {
+      setStats(null);
+      setIndexed(false);
+      return;
+    }
+
     try {
-      const result = await invoke<IndexStats>("workspace_symbols_get_stats");
+      const result = await workspaceSymbolsGetStats(workspacePath);
       setStats(result);
-      setIndexed(true);
+      setIndexed(result.indexed);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : String(err);

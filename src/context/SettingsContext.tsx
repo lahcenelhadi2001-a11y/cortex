@@ -12,6 +12,7 @@ import {
 import { createStore, reconcile } from "solid-js/store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { createAsyncCleanupRegistrar } from "@/utils/asyncCleanup";
 
 // ============================================================================
 // Settings Type Definitions
@@ -1872,6 +1873,11 @@ const updateCommandPaletteSetting = async <K extends keyof CommandPaletteSetting
 
   onMount(() => {
     let settingsReconciled = false;
+    const backendReadyCleanup = createAsyncCleanupRegistrar();
+
+    onCleanup(() => {
+      backendReadyCleanup.dispose();
+    });
 
     // (1) Read cached settings from localStorage for instant startup (no IPC wait)
     try {
@@ -1898,9 +1904,9 @@ const updateCommandPaletteSetting = async <K extends keyof CommandPaletteSetting
         await getSettingsPath();
         cacheSettingsToLocalStorage();
       });
-      onCleanup(() => unlisten());
+      backendReadyCleanup.add(unlisten);
     };
-    setupBackendListener();
+    void setupBackendListener();
 
     // (3) Deferred fallback: if backend:ready hasn't arrived in 2s, load via IPC
     const reconcileFallback = async () => {

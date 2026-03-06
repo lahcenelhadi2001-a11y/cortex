@@ -1,13 +1,48 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup } from "@solidjs/testing-library";
 
-const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-const mockInterrupt = vi.fn().mockResolvedValue(undefined);
-const mockOpenFile = vi.fn();
-const mockOpenVirtualFile = vi.fn();
-const mockSetShowCommandPalette = vi.fn();
-const mockSetShowFileFinder = vi.fn();
-const mockSetShowGoToLine = vi.fn();
+const {
+  mockSendMessage,
+  mockInterrupt,
+  mockOpenFile,
+  mockOpenVirtualFile,
+  mockSetShowCommandPalette,
+  mockSetShowFileFinder,
+  mockSetShowGoToLine,
+  mockWindowOnResized,
+  mockWindowOnMoved,
+  mockWindowIsMaximized,
+  mockWindowMinimize,
+  mockWindowMaximize,
+  mockWindowUnmaximize,
+  mockWindowClose,
+  mockGetCurrentWindow,
+} = vi.hoisted(() => ({
+  mockSendMessage: vi.fn().mockResolvedValue(undefined),
+  mockInterrupt: vi.fn().mockResolvedValue(undefined),
+  mockOpenFile: vi.fn(),
+  mockOpenVirtualFile: vi.fn(),
+  mockSetShowCommandPalette: vi.fn(),
+  mockSetShowFileFinder: vi.fn(),
+  mockSetShowGoToLine: vi.fn(),
+  mockWindowOnResized: vi.fn().mockResolvedValue(() => {}),
+  mockWindowOnMoved: vi.fn().mockResolvedValue(() => {}),
+  mockWindowIsMaximized: vi.fn().mockResolvedValue(false),
+  mockWindowMinimize: vi.fn().mockResolvedValue(undefined),
+  mockWindowMaximize: vi.fn().mockResolvedValue(undefined),
+  mockWindowUnmaximize: vi.fn().mockResolvedValue(undefined),
+  mockWindowClose: vi.fn().mockResolvedValue(undefined),
+  mockGetCurrentWindow: vi.fn(),
+}));
+const mockAppWindow = {
+  onResized: mockWindowOnResized,
+  onMoved: mockWindowOnMoved,
+  isMaximized: mockWindowIsMaximized,
+  minimize: mockWindowMinimize,
+  maximize: mockWindowMaximize,
+  unmaximize: mockWindowUnmaximize,
+  close: mockWindowClose,
+};
 
 vi.mock("@/context/EditorContext", () => ({
   useEditor: () => ({
@@ -62,6 +97,10 @@ vi.mock("@/utils/logger", () => ({
     warn: vi.fn(),
     error: vi.fn(),
   }),
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: mockGetCurrentWindow,
 }));
 
 vi.mock("@/utils/windowStorage", () => ({
@@ -165,6 +204,7 @@ describe("CortexDesktopLayout", () => {
     vi.clearAllMocks();
     cleanup();
     localStorage.clear();
+    mockGetCurrentWindow.mockResolvedValue(mockAppWindow);
     addEventSpy = vi.spyOn(window, "addEventListener");
     removeEventSpy = vi.spyOn(window, "removeEventListener");
   });
@@ -208,6 +248,26 @@ describe("CortexDesktopLayout", () => {
         </CortexDesktopLayout>
       ));
       expect(queryByTestId("child-element")).toBeTruthy();
+    });
+
+    it("removes startup listeners even if the Tauri window resolves after unmount", async () => {
+      let resolveWindow!: (value: typeof mockAppWindow) => void;
+      mockGetCurrentWindow.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveWindow = resolve as (value: typeof mockAppWindow) => void;
+          }),
+      );
+
+      const { unmount } = render(() => <CortexDesktopLayout />);
+
+      unmount();
+      resolveWindow(mockAppWindow);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(addEventSpy).toHaveBeenCalledWith("view:git", expect.any(Function));
+      expect(removeEventSpy).toHaveBeenCalledWith("view:git", expect.any(Function));
     });
 
     it("should have correct root container styling", () => {

@@ -20,6 +20,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { getWindowLabel } from "@/utils/windowStorage";
 import { safeGetItem, safeSetItem } from "@/utils/safeStorage";
+import { createAsyncCleanupRegistrar } from "@/utils/asyncCleanup";
 
 import CortexTitleBar from "./CortexTitleBar";
 import { WindowResizers } from "./titlebar/WindowResizers";
@@ -101,6 +102,7 @@ export function CortexDesktopLayout(props: ParentProps) {
   const editor = useEditor();
   const sdk = useSDK();
   const commands = useCommands();
+  const eventListenerCleanup = createAsyncCleanupRegistrar();
 
   let workspace: ReturnType<typeof useWorkspace> | null = null;
   try { workspace = useWorkspace(); } catch { /* not available */ }
@@ -263,12 +265,20 @@ export function CortexDesktopLayout(props: ParentProps) {
     };
 
     for (const [ev, fn] of Object.entries(evMap)) window.addEventListener(ev, fn);
-    onCleanup(() => { for (const [ev, fn] of Object.entries(evMap)) window.removeEventListener(ev, fn); });
+    eventListenerCleanup.add(() => {
+      for (const [ev, fn] of Object.entries(evMap)) {
+        window.removeEventListener(ev, fn);
+      }
+    });
 
     const cwd = sdk.state.config.cwd;
     if (cwd && cwd !== "." && cwd !== "" && mode() !== "ide") {
       setMode("ide");
     }
+  });
+
+  onCleanup(() => {
+    eventListenerCleanup.dispose();
   });
 
   const handleMinimize = async () => { if (appWindow) await appWindow.minimize(); };
