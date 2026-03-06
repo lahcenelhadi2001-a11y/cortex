@@ -824,14 +824,52 @@ export function SearchSidebar() {
     onCleanup(() => window.removeEventListener("click", handleClick));
   });
 
+  const normalizePath = (path: string) => path.replace(/\\/g, "/");
+
+  let pendingEditorReadyCleanup: (() => void) | null = null;
+  let pendingEditorReadyRequestId = 0;
+
+  const cancelPendingEditorReadyNavigation = () => {
+    pendingEditorReadyRequestId += 1;
+    pendingEditorReadyCleanup?.();
+    pendingEditorReadyCleanup = null;
+  };
+
+  const registerPendingEditorReadyNavigation = (targetPath: string, onReady: () => void) => {
+    cancelPendingEditorReadyNavigation();
+    const requestId = pendingEditorReadyRequestId;
+
+    const handleEditorReady = (event: Event) => {
+      if (requestId !== pendingEditorReadyRequestId) return;
+
+      const readyPath = (event as CustomEvent<{ filePath: string }>).detail.filePath;
+      if (normalizePath(readyPath) !== targetPath) {
+        return;
+      }
+
+      cancelPendingEditorReadyNavigation();
+      onReady();
+    };
+
+    pendingEditorReadyCleanup = () => {
+      window.removeEventListener("editor:file-ready", handleEditorReady as EventListener);
+    };
+
+    window.addEventListener("editor:file-ready", handleEditorReady as EventListener);
+  };
+
+  onCleanup(() => {
+    cancelPendingEditorReadyNavigation();
+  });
+
   const openMatch = async (file: string, line: number, column: number, matchStart?: number, matchEnd?: number) => {
     const projectPath = getProjectPath();
     const isAbsolutePath = /^[a-zA-Z]:[\\/]/.test(file) || file.startsWith('/');
     const fullPath = isAbsolutePath ? file : (projectPath ? `${projectPath}/${file}` : file);
     
-    const normalizedFullPath = fullPath.replace(/\\/g, '/');
+    const normalizedFullPath = normalizePath(fullPath);
     const activeFile = editorState.openFiles.find(f => f.id === editorState.activeFileId);
-    const isAlreadyActive = activeFile && activeFile.path.replace(/\\/g, '/') === normalizedFullPath;
+    const isAlreadyActive = activeFile && normalizePath(activeFile.path) === normalizedFullPath;
 
     const navigateToMatch = () => {
       if (matchStart !== undefined && matchEnd !== undefined) {
@@ -853,32 +891,19 @@ export function SearchSidebar() {
     };
     
     if (isAlreadyActive) {
+      cancelPendingEditorReadyNavigation();
       navigateToMatch();
       return;
     }
-    
-    let handled = false;
-    const handleEditorReady = (e: CustomEvent<{ filePath: string }>) => {
-      if (handled) return;
-      const eventPath = e.detail.filePath.replace(/\\/g, '/');
-      if (eventPath === normalizedFullPath) {
-        handled = true;
-        window.removeEventListener("editor:file-ready", handleEditorReady as EventListener);
-        navigateToMatch();
-      }
-    };
-    
-    window.addEventListener("editor:file-ready", handleEditorReady as EventListener);
-    
+
+    registerPendingEditorReadyNavigation(normalizedFullPath, navigateToMatch);
+
     await openFile(fullPath);
-    
-    setTimeout(() => {
-      if (!handled) {
-        handled = true;
-        window.removeEventListener("editor:file-ready", handleEditorReady as EventListener);
-        navigateToMatch();
-      }
-    }, 300);
+
+    const targetIsOpen = editorState.openFiles.some((openFileEntry) => normalizePath(openFileEntry.path) === normalizedFullPath);
+    if (!targetIsOpen) {
+      cancelPendingEditorReadyNavigation();
+    }
   };
 
   const replaceInFile = async (filePath: string) => {

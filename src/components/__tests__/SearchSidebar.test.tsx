@@ -364,6 +364,8 @@ describe("SearchSidebar", () => {
     await vi.waitFor(() => {
       expect(mockOpenFile).toHaveBeenCalledWith("/workspace/project/src/other.ts");
     });
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
     expect(gotoHandler).not.toHaveBeenCalled();
 
     mockEditorState.activeFileId = "other";
