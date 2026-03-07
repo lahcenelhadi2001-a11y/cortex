@@ -10,7 +10,7 @@
  * - Source provider badge
  */
 
-import { Show, createSignal, createEffect, onCleanup } from "solid-js";
+import { Show, createSignal, createEffect, onCleanup, untrack } from "solid-js";
 import type * as Monaco from "monaco-editor";
 import {
   useInlineCompletions,
@@ -32,6 +32,42 @@ export interface InlineCompletionProps {
   onAccepted?: (text: string) => void;
   /** Callback when a completion is dismissed */
   onDismissed?: () => void;
+}
+
+interface SharedMonacoRegistration {
+  monaco: typeof Monaco;
+  disposable: Monaco.IDisposable;
+  refCount: number;
+}
+
+let sharedMonacoRegistration: SharedMonacoRegistration | null = null;
+
+function acquireSharedMonacoRegistration(
+  monaco: typeof Monaco,
+  registerWithMonaco: (monaco: typeof Monaco) => Monaco.IDisposable,
+): () => void {
+  if (!sharedMonacoRegistration || sharedMonacoRegistration.monaco !== monaco) {
+    sharedMonacoRegistration?.disposable?.dispose();
+    sharedMonacoRegistration = {
+      monaco,
+      disposable: registerWithMonaco(monaco),
+      refCount: 0,
+    };
+  }
+
+  sharedMonacoRegistration.refCount += 1;
+
+  return () => {
+    if (!sharedMonacoRegistration || sharedMonacoRegistration.monaco !== monaco) {
+      return;
+    }
+
+    sharedMonacoRegistration.refCount -= 1;
+    if (sharedMonacoRegistration.refCount <= 0) {
+      sharedMonacoRegistration.disposable?.dispose();
+      sharedMonacoRegistration = null;
+    }
+  };
 }
 
 // ============================================================================
@@ -68,23 +104,38 @@ export function InlineCompletion(props: InlineCompletionProps) {
     configure,
   } = useInlineCompletions(options);
 
+  createEffect(() => {
+    const editorInstance = props.editor;
+    if (!editorInstance) return;
+
+    editorInstance.updateOptions(getEditorOptions());
+  });
+
   // Register with Monaco when editor and monaco are available
   createEffect(() => {
     const monacoInstance = props.monaco;
     const editorInstance = props.editor;
+    const enabled = props.enabled ?? true;
 
-    if (!monacoInstance || !editorInstance || isRegistered()) return;
+    if (!enabled || !monacoInstance || !editorInstance) {
+      setIsRegistered(false);
+      return;
+    }
 
-    const disposable = registerWithMonaco(monacoInstance);
+    const releaseRegistration = acquireSharedMonacoRegistration(
+      monacoInstance,
+      registerWithMonaco,
+    );
     const keybindingDisposables = registerKeybindings(monacoInstance, editorInstance);
 
-    const editorOptions = getEditorOptions();
-    editorInstance.updateOptions(editorOptions);
+    untrack(() => {
+      editorInstance.updateOptions(getEditorOptions());
+    });
 
     setIsRegistered(true);
 
     onCleanup(() => {
-      disposable.dispose();
+      releaseRegistration();
       keybindingDisposables.forEach((d) => d.dispose());
       setIsRegistered(false);
     });

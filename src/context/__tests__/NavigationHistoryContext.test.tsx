@@ -113,6 +113,14 @@ describe("NavigationHistoryContext", () => {
 
     await vi.waitFor(() => {
       expect(mockOpenFile).toHaveBeenCalledWith("/workspace/project/src/a.ts");
+    });
+    expect(setCursorPositionHandler).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new CustomEvent("editor:file-ready", {
+      detail: { filePath: "/workspace/project/src/a.ts" },
+    }));
+
+    await vi.waitFor(() => {
       expect(setCursorPositionHandler).toHaveBeenCalledWith(
         expect.objectContaining({
           detail: {
@@ -131,6 +139,14 @@ describe("NavigationHistoryContext", () => {
 
     await vi.waitFor(() => {
       expect(mockOpenFile).toHaveBeenCalledWith("/workspace/project/src/b.ts");
+    });
+    expect(setCursorPositionHandler).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new CustomEvent("editor:file-ready", {
+      detail: { filePath: "/workspace/project/src/b.ts" },
+    }));
+
+    await vi.waitFor(() => {
       expect(setCursorPositionHandler).toHaveBeenCalledWith(
         expect.objectContaining({
           detail: {

@@ -106,6 +106,10 @@ export function createFileOperations(
             group.activeFileId = existing.id;
           })
         );
+
+        if (state.previewTab === existing.id) {
+          setState("previewTab", null);
+        }
       });
       console.debug(`[EditorContext] openFile (existing): ${(performance.now() - perfStart).toFixed(1)}ms`);
       preloadAdjacentTabs(state, existing.id);

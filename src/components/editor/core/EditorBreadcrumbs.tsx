@@ -19,6 +19,7 @@ interface EditorBreadcrumbsProps {
   editor: Accessor<Monaco.editor.IStandaloneCodeEditor | null>;
   monaco: Accessor<typeof Monaco | null>;
   activeFile: Accessor<OpenFile | undefined>;
+  isActiveEditor: Accessor<boolean>;
   smartSelectManager: SmartSelectManagerRef;
 }
 
@@ -28,7 +29,10 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     const monaco = props.monaco();
     if (!editor || !monaco) return;
 
+    const shouldHandleActiveEditorEvent = () => props.isActiveEditor();
+
     const handleGotoLine = (e: CustomEvent<{ line: number; column?: number }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const { line, column = 1 } = e.detail;
       editor.setPosition({ lineNumber: line, column });
       editor.revealLineInCenter(line);
@@ -36,6 +40,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleEditorGotoLine = (e: CustomEvent<{ line: number; column?: number }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const { line, column = 1 } = e.detail;
       editor.setPosition({ lineNumber: line, column });
       editor.revealLineInCenter(line);
@@ -43,6 +48,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleOutlineNavigate = (e: CustomEvent<{ fileId: string; line: number; column: number }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const currentFile = props.activeFile();
       if (!currentFile || e.detail.fileId !== currentFile.id) return;
       const { line, column } = e.detail;
@@ -52,6 +58,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleBufferSearchGoto = (e: CustomEvent<{ line: number; column?: number; length?: number; start: number; end: number; relativeToLine?: boolean }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const { line, column = 1, length = 0, start, end, relativeToLine } = e.detail;
 
       if (relativeToLine) {
@@ -81,6 +88,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleSetCursorPosition = (e: CustomEvent<{ filePath: string; line: number; column: number }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const currentFile = props.activeFile();
       if (!currentFile || e.detail.filePath !== currentFile.path) return;
       const { line, column } = e.detail;
@@ -90,6 +98,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleBufferSearchGetSelection = () => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const selection = editor.getSelection();
       if (selection && !selection.isEmpty()) {
         window.dispatchEvent(
@@ -114,6 +123,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleGetSelectionForTerminal = () => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const model = editor.getModel();
       const selection = editor.getSelection();
       if (model && selection && !selection.isEmpty()) {
@@ -127,6 +137,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleGetSelectionForSearch = () => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const model = editor.getModel();
       const selection = editor.getSelection();
       if (model && selection && !selection.isEmpty()) {
@@ -140,6 +151,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleGetActiveFileForTerminal = () => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const currentFile = props.activeFile();
       if (currentFile?.path) {
         window.dispatchEvent(
@@ -151,6 +163,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleEditorAction = (e: CustomEvent<{ action: string }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const { action } = e.detail;
       if (action) {
         const monacoAction = editor.getAction(action);
@@ -160,6 +173,7 @@ export function EditorBreadcrumbs(props: EditorBreadcrumbsProps) {
     };
 
     const handleEditorCommand = async (e: CustomEvent<{ command: string }>) => {
+      if (!shouldHandleActiveEditorEvent()) return;
       const { command } = e.detail;
 
       if (command === "expand-selection") {

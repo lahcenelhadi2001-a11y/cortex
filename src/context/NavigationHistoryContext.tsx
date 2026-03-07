@@ -71,10 +71,42 @@ export function NavigationHistoryProvider(props: ParentProps) {
   
   const editor = useEditor();
 
+  const normalizePath = (value: string | null | undefined) =>
+    (value ?? "").replace(/\\/g, "/");
+
   const getActiveFilePath = () => {
     const activeFile = editor.state.openFiles.find((file) => file.id === editor.state.activeFileId);
     return activeFile?.path ?? null;
   };
+
+  const waitForEditorReady = (filePath: string) =>
+    new Promise<void>((resolve) => {
+      const targetPath = normalizePath(filePath);
+      let settled = false;
+
+      const cleanup = () => {
+        window.removeEventListener("editor:file-ready", handleEditorReady as EventListener);
+        window.clearTimeout(timeoutId);
+      };
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+
+      const handleEditorReady = (event: Event) => {
+        const readyPath = normalizePath(
+          (event as CustomEvent<{ filePath?: string }>).detail?.filePath,
+        );
+        if (readyPath !== targetPath) return;
+        finish();
+      };
+
+      const timeoutId = window.setTimeout(finish, 750);
+      window.addEventListener("editor:file-ready", handleEditorReady as EventListener);
+    });
 
   const recordLocation = (
     location: Omit<NavigationLocation, "timestamp">,
@@ -124,8 +156,16 @@ export function NavigationHistoryProvider(props: ParentProps) {
     setIsNavigating(true);
     
     try {
+      const currentPath = normalizePath(getActiveFilePath());
+      const targetPath = normalizePath(location.filePath);
+      const shouldWaitForEditorReady = currentPath !== targetPath;
+      const readyPromise = shouldWaitForEditorReady
+        ? waitForEditorReady(location.filePath)
+        : Promise.resolve();
+
       // First, open the file (this will also focus it if already open)
       await editor.openFile(location.filePath);
+      await readyPromise;
       
       // Dispatch event to set cursor position in the editor
       // The CodeEditor component listens for this event

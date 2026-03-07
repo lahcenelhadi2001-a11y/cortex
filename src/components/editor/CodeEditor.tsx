@@ -6,6 +6,7 @@ import {
   createMemo,
 } from "solid-js";
 import type { OpenFile } from "@/context/EditorContext";
+import { useEditor } from "@/context/EditorContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useDebug } from "@/context/DebugContext";
 import { useCollabEditor } from "@/hooks/useCollabEditor";
@@ -480,6 +481,7 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor(props: CodeEditorProps) {
+  const { state: editorState } = useEditor();
   const {
     state: settingsState,
     getEffectiveEditorSettings,
@@ -536,6 +538,17 @@ export function CodeEditor(props: CodeEditorProps) {
     return file ? LANGUAGE_MAP[file.language] || file.language || "plaintext" : "plaintext";
   });
   const currentFileIdMemo = createMemo(() => instance.activeFile()?.id || null);
+  const isActiveEditor = createMemo(() => {
+    const file = instance.activeFile();
+    if (!file) return false;
+
+    const activeFileMatches = editorState.activeFileId === file.id;
+    const activeGroupMatches = props.groupId
+      ? editorState.activeGroupId === props.groupId
+      : true;
+
+    return activeFileMatches && activeGroupMatches;
+  });
 
   useCollabEditor({
     editor: instance.editor(),
@@ -790,7 +803,13 @@ export function CodeEditor(props: CodeEditorProps) {
       {/* Sub-components for event handling */}
       <EditorToolbar editor={instance.editor} monaco={instance.monaco} activeFile={instance.activeFile} />
       <EditorMinimap editor={instance.editor} monaco={instance.monaco} />
-      <EditorBreadcrumbs editor={instance.editor} monaco={instance.monaco} activeFile={instance.activeFile} smartSelectManager={smartSelectManager} />
+      <EditorBreadcrumbs
+        editor={instance.editor}
+        monaco={instance.monaco}
+        activeFile={instance.activeFile}
+        isActiveEditor={isActiveEditor}
+        smartSelectManager={smartSelectManager}
+      />
       <EditorDiffView editor={instance.editor} monaco={instance.monaco} activeFile={instance.activeFile} />
       <EditorFindReplace editor={instance.editor} monaco={instance.monaco} />
       <EditorStickyScroll editor={instance.editor} monaco={instance.monaco} />
