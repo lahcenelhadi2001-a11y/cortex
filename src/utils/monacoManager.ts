@@ -10,6 +10,11 @@
  */
 
 import type * as Monaco from "monaco-editor";
+import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker.js?worker";
+import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker.js?worker";
+import CssWorker from "monaco-editor/esm/vs/language/css/css.worker.js?worker";
+import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker.js?worker";
+import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker.js?worker";
 
 // ============================================================================
 // Constants
@@ -98,6 +103,45 @@ interface MonacoManagerConfig {
   onLoadStart?: () => void;
   onLoadComplete?: () => void;
   onLoadError?: (error: Error) => void;
+}
+
+type MonacoWorkerConstructor = new () => Worker;
+
+type MonacoEnvironmentLike = NonNullable<typeof globalThis.MonacoEnvironment>;
+
+const MONACO_WORKERS: Record<string, MonacoWorkerConstructor> = {
+  json: JsonWorker,
+  css: CssWorker,
+  scss: CssWorker,
+  less: CssWorker,
+  html: HtmlWorker,
+  handlebars: HtmlWorker,
+  razor: HtmlWorker,
+  typescript: TsWorker,
+  javascript: TsWorker,
+};
+
+const getWorkerConstructor = (label: string): MonacoWorkerConstructor =>
+  MONACO_WORKERS[label] ?? EditorWorker;
+
+export function configureMonacoWorkers(): void {
+  const environment: MonacoEnvironmentLike = {
+    ...(globalThis.MonacoEnvironment ?? {}),
+    getWorker(_workerId: string, label: string) {
+      const WorkerConstructor = getWorkerConstructor(label);
+      return new WorkerConstructor();
+    },
+  };
+
+  globalThis.MonacoEnvironment = environment;
+
+  if (typeof window !== "undefined") {
+    (window as Window & typeof globalThis).MonacoEnvironment = environment;
+  }
+
+  if (typeof self !== "undefined") {
+    (self as typeof globalThis).MonacoEnvironment = environment;
+  }
 }
 
 // ============================================================================
@@ -247,6 +291,8 @@ class MonacoManager {
    * Load Monaco dynamically
    */
   private async loadMonaco(): Promise<typeof Monaco> {
+    configureMonacoWorkers();
+
     // Use direct ES module import instead of @monaco-editor/loader
     // This avoids CDN loading and lets Vite handle bundling
     const monaco = await import("monaco-editor");
