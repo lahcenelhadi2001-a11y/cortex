@@ -324,7 +324,7 @@ export function ThreadList(props: ThreadListProps) {
       style={{
         display: "flex",
         "flex-direction": "column",
-        width: "240px",
+        width: "clamp(200px, 20vw, 500px)", resize: "horizontal", overflow: "auto",
         height: "100%",
         background: "var(--background-stronger)",
         "border-right": "1px solid var(--border-weak)",
